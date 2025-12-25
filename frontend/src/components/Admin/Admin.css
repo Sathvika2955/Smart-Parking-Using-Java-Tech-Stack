@@ -1,0 +1,166 @@
+/* Admin Sidebar - Different gradient */
+.admin-sidebar {
+  background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
+}
+
+.admin-avatar {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Table Styles */
+.table-container {
+  overflow-x: auto;
+}
+
+.booking-number {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.vehicle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vehicle-number {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vehicle-type {
+  font-size: 12px;
+  color: #718096;
+}
+
+.slot-badge {
+  background: #ebf4ff;
+  color: #667eea;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.entry-time {
+  font-size: 13px;
+  color: #4a5568;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+/* Search Styles */
+.search-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.search-form {
+  padding: 20px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f7fafc;
+  border-radius: 12px;
+  padding: 8px 16px;
+  border: 2px solid #e2e8f0;
+}
+.search-input-wrapper:focus-within {
+border-color: #667eea;
+box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.search-icon {
+font-size: 20px;
+color: #a0aec0;
+}
+.search-input {
+flex: 1;
+border: none;
+background: transparent;
+font-size: 16px;
+padding: 12px 0;
+color: #2d3748;
+font-weight: 500;
+}
+.search-input::placeholder {
+color: #a0aec0;
+}
+.search-result-card {
+margin-top: 24px;
+animation: fadeIn 0.4s ease-out;
+}
+.result-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 24px;
+padding-bottom: 16px;
+border-bottom: 2px solid #e2e8f0;
+}
+.result-header h3 {
+font-size: 22px;
+font-weight: 700;
+color: #2d3748;
+}
+.result-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 24px;
+margin-bottom: 24px;
+}
+.result-item {
+display: flex;
+align-items: flex-start;
+gap: 16px;
+}
+.result-icon {
+font-size: 24px;
+color: #667eea;
+margin-top: 4px;
+}
+.result-label {
+font-size: 13px;
+color: #a0aec0;
+font-weight: 500;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-bottom: 6px;
+}
+.result-value {
+font-size: 18px;
+font-weight: 600;
+color: #2d3748;
+}
+.slot-number-large {
+font-size: 32px;
+color: #667eea;
+}
+.remove-vehicle-btn {
+margin-top: 8px;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+font-size: 16px;
+}
+/* Responsive */
+@media (max-width: 768px) {
+.result-grid {
+grid-template-columns: 1fr;
+gap: 16px;
+}
+.search-input-wrapper {
+flex-direction: column;
+align-items: stretch;
+}
+.search-input-wrapper .btn {
+width: 100%;
+}
+}
