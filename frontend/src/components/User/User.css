@@ -73,10 +73,20 @@
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 20px;
+}
+
+.sidebar-logo svg {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.sidebar-logo span {
+  white-space: nowrap;
+  margin-left: 8px;
 }
 
 .sidebar-user {
