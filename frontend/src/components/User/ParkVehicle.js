@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaCar, FaIdCard, FaPhone } from 'react-icons/fa';
+import { FaCar, FaIdCard, FaPhone, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCheck } from 'react-icons/fa';
 import api from '../../services/api';
 import { PARKING_API, VEHICLE_TYPES } from '../../utils/constants';
-import { initiatePayment } from '../../services/razorpay';
 import SlotCard from '../Common/SlotCard';
 import Notification from '../Common/Notification';
 import './User.css';
@@ -12,15 +11,45 @@ const ParkVehicle = ({ user }) => {
     licensePlate: '',
     vehicleType: 'CAR',
     ownerName: user.fullName,
-    phoneNumber: user.phoneNumber || ''
+    phoneNumber: user.phoneNumber || '',
+    paymentMethod: 'cash',
+    upiId: ''
   });
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [showUpiModal, setShowUpiModal] = useState(false);
+
+  // Get GPS location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationError('');
+        },
+        (error) => {
+          setLocationError('Unable to get location. Showing default parking area.');
+          console.error('Location error:', error);
+        }
+      );
+    } else {
+      setLocationError('Geolocation is not supported by your browser.');
+    }
+  }, []);
 
   useEffect(() => {
     fetchSlots();
+    const interval = setInterval(fetchSlots, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSlots = async () => {
@@ -40,6 +69,10 @@ const ParkVehicle = ({ user }) => {
   };
 
   const handleSlotSelect = (slot) => {
+    if (slot.isOccupied || !slot.isAvailable) {
+      showNotification('This slot is already occupied', 'error');
+      return;
+    }
     setSelectedSlot(slot);
   };
 
@@ -56,57 +89,132 @@ const ParkVehicle = ({ user }) => {
       return;
     }
 
+    // If online payment selected, show UPI modal
+    if (formData.paymentMethod === 'online') {
+      setShowUpiModal(true);
+      return;
+    }
+
+    // Process cash payment
+    processCashPayment();
+  };
+
+  const processCashPayment = async () => {
     setLoading(true);
 
     try {
-      // First, create parking booking
+      const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
+      const advanceAmount = vehicleTypeData.rate;
+
       const parkingResponse = await api.post(`${PARKING_API}/park`, {
         ...formData,
         userId: user.id,
-        slotNumber: selectedSlot.slotNumber
+        slotNumber: selectedSlot.slotNumber,
+        location: userLocation
       });
 
-      if (parkingResponse.data.success) {
-        const bookingDetails = {
+      if (parkingResponse.data && parkingResponse.data.success) {
+        const details = {
           bookingNumber: parkingResponse.data.bookingNumber,
           vehicleNumber: formData.licensePlate,
           slotNumber: selectedSlot.slotNumber,
           ownerName: formData.ownerName,
           phoneNumber: formData.phoneNumber,
-          email: user.email
+          email: user.email,
+          paymentMethod: 'Cash',
+          amount: advanceAmount
         };
 
-        // Calculate advance payment (1 hour)
-        const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
-        const advanceAmount = vehicleTypeData.rate;
-
-        // Initiate Razorpay payment
-        initiatePayment(
-          advanceAmount,
-          bookingDetails,
-          (paymentResponse) => {
-            // Payment success
-            showNotification('Vehicle parked and payment successful!', 'success');
-            setFormData({
-              ...formData,
-              licensePlate: ''
-            });
-            setSelectedSlot(null);
-            fetchSlots();
-          },
-          (error) => {
-            // Payment failed
-            showNotification(`Payment failed: ${error}`, 'error');
-          }
-        );
+        setBookingDetails(details);
+        setShowSuccess(true);
+        fetchSlots();
       } else {
-        showNotification(parkingResponse.data.message, 'error');
+        const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
+        showNotification(errorMessage, 'error');
+        fetchSlots();
+        setSelectedSlot(null);
       }
     } catch (error) {
-      showNotification('Failed to park vehicle', 'error');
+      console.error('Parking error:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 
+                            error.response.data?.error || 
+                            'Vehicle is already parked or slot is occupied';
+        showNotification(errorMessage, 'error');
+      } else {
+        showNotification('Failed to park vehicle. Please try again.', 'error');
+      }
+      
+      fetchSlots();
+      setSelectedSlot(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUpiPayment = async () => {
+    if (!formData.upiId || !formData.upiId.includes('@')) {
+      showNotification('Please enter a valid UPI ID (e.g., abc@paytm)', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
+      const advanceAmount = vehicleTypeData.rate;
+
+      const parkingResponse = await api.post(`${PARKING_API}/park`, {
+        ...formData,
+        userId: user.id,
+        slotNumber: selectedSlot.slotNumber,
+        location: userLocation,
+        upiId: formData.upiId
+      });
+
+      if (parkingResponse.data && parkingResponse.data.success) {
+        // Simulate payment processing
+        setTimeout(() => {
+          const details = {
+            bookingNumber: parkingResponse.data.bookingNumber,
+            vehicleNumber: formData.licensePlate,
+            slotNumber: selectedSlot.slotNumber,
+            ownerName: formData.ownerName,
+            phoneNumber: formData.phoneNumber,
+            email: user.email,
+            paymentMethod: `UPI (${formData.upiId})`,
+            amount: advanceAmount
+          };
+
+          setShowUpiModal(false);
+          setBookingDetails(details);
+          setShowSuccess(true);
+          fetchSlots();
+          setLoading(false);
+        }, 2000);
+      } else {
+        const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
+        showNotification(errorMessage, 'error');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Parking error:', error);
+      showNotification('Payment failed. Please try again.', 'error');
+      setLoading(false);
+    }
+  };
+
+  const resetBooking = () => {
+    setShowSuccess(false);
+    setBookingDetails(null);
+    setSelectedSlot(null);
+    setShowUpiModal(false);
+    setFormData({
+      ...formData,
+      licensePlate: '',
+      upiId: ''
+    });
   };
 
   const showNotification = (message, type) => {
@@ -118,6 +226,50 @@ const ParkVehicle = ({ user }) => {
     return slots.filter(slot => !slot.isOccupied && slot.isAvailable);
   };
 
+  // Success Screen
+  if (showSuccess && bookingDetails) {
+    return (
+      <div className="page-container">
+        <div className="success-screen">
+          <div className="success-card">
+            <div className="success-icon">
+              <FaCheck />
+            </div>
+            <h2>Payment Successful!</h2>
+            <p>Your parking slot has been booked</p>
+            
+            <div className="booking-summary">
+              <div className="summary-row">
+                <span>Booking Number:</span>
+                <strong>{bookingDetails.bookingNumber}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Slot Number:</span>
+                <strong>#{bookingDetails.slotNumber}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Vehicle:</span>
+                <strong>{bookingDetails.vehicleNumber}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Payment Method:</span>
+                <strong>{bookingDetails.paymentMethod}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Amount Paid:</span>
+                <strong className="text-success">₹{bookingDetails.amount}</strong>
+              </div>
+            </div>
+
+            <button className="btn btn-primary btn-block" onClick={resetBooking}>
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container">
       {notification && (
@@ -128,9 +280,69 @@ const ParkVehicle = ({ user }) => {
         />
       )}
 
+      {/* UPI Payment Modal */}
+      {showUpiModal && (
+        <div className="modal-overlay">
+          <div className="upi-modal">
+            <div className="modal-header">
+              <h3>Enter UPI Details</h3>
+              <button className="modal-close" onClick={() => setShowUpiModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">UPI ID *</label>
+                <input
+                  type="text"
+                  name="upiId"
+                  className="form-input"
+                  placeholder="e.g., yourname@paytm, yourname@gpay"
+                  value={formData.upiId}
+                  onChange={handleChange}
+                  autoFocus
+                />
+                <p className="upi-hint">Supported: GPay, PhonePe, Paytm, BHIM, etc.</p>
+              </div>
+              
+              <div className="amount-display">
+                <h4>Amount to Pay</h4>
+                <div className="amount-value">
+                  ₹{VEHICLE_TYPES.find(v => v.value === formData.vehicleType)?.rate || 20}
+                </div>
+                <div className="amount-details">1 Hour Advance Payment</div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowUpiModal(false)}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleUpiPayment}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Pay Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <h1 className="page-title">Park Vehicle</h1>
         <p className="page-subtitle">Select a slot and park your vehicle</p>
+        {userLocation && (
+          <div className="location-badge">
+            <FaMapMarkerAlt />
+            <span>Location: Lat {userLocation.latitude.toFixed(4)}, Lon {userLocation.longitude.toFixed(4)}</span>
+          </div>
+        )}
+        {locationError && (
+          <div className="location-error">{locationError}</div>
+        )}
       </div>
 
       <div className="park-vehicle-container">
@@ -192,6 +404,34 @@ const ParkVehicle = ({ user }) => {
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label">Payment Method *</label>
+                <div className="payment-options">
+                  <label className="payment-option">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cash"
+                      checked={formData.paymentMethod === 'cash'}
+                      onChange={handleChange}
+                    />
+                    <FaMoneyBillWave className="payment-icon cash" />
+                    <span>Cash Payment</span>
+                  </label>
+                  <label className="payment-option">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="online"
+                      checked={formData.paymentMethod === 'online'}
+                      onChange={handleChange}
+                    />
+                    <FaCreditCard className="payment-icon online" />
+                    <span>UPI Payment</span>
+                  </label>
+                </div>
+              </div>
+
               {selectedSlot && (
                 <div className="selected-slot-info">
                   <h4>Selected Slot</h4>
@@ -207,7 +447,7 @@ const ParkVehicle = ({ user }) => {
                 className="btn btn-primary btn-block"
                 disabled={loading || !selectedSlot}
               >
-                {loading ? 'Processing...' : 'Park & Pay'}
+                {loading ? 'Processing...' : 'Confirm & Pay'}
               </button>
             </form>
           </div>

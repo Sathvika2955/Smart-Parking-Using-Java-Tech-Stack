@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaParking, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaParking, FaToggleOn, FaToggleOff,FaCar } from 'react-icons/fa';
 import api from '../../services/api';
 import { PARKING_API } from '../../utils/constants';
 import SlotCard from '../Common/SlotCard';
