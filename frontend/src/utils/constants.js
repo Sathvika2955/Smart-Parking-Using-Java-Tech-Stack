@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'http://localhost:8080/api';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 export const AUTH_API = `${API_BASE_URL}/auth`;
 export const PARKING_API = `${API_BASE_URL}/parking`;
 
