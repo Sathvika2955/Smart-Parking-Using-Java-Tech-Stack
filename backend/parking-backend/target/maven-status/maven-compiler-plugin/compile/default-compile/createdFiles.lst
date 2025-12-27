@@ -5,7 +5,6 @@ com\parking\controller\AuthController.class
 com\parking\entity\ParkingSlot.class
 com\parking\ParkingApplication.class
 com\parking\repository\VehicleRepository.class
-com\parking\config\CorsConfig$1.class
 com\parking\repository\UserRepository.class
 com\parking\service\ParkingService.class
 com\parking\entity\User.class
