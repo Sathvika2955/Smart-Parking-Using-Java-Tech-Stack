@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { FaClock, FaCar, FaMapMarkerAlt, FaMoneyBillWave } from 'react-icons/fa';
 import api from '../../services/api';
+import { formatDate, formatDuration } from '../../utils/dateUtils';
 import { PARKING_API } from '../../utils/constants';
 import Notification from '../Common/Notification';
 import './User.css';
