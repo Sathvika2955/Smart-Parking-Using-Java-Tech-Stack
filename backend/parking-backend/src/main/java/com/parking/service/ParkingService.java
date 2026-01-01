@@ -36,29 +36,21 @@ public class ParkingService {
 
     private static final int TOTAL_SLOTS = 20;
 
-    // ---------------- INITIALIZATION ----------------
-
     @PostConstruct
     public void initializeSlots() {
         if (slotRepository.count() == 0) {
-
             for (int i = 1; i <= 10; i++) {
                 slotRepository.save(new ParkingSlot(i, 1, "SMALL"));
             }
-
             for (int i = 11; i <= 17; i++) {
                 slotRepository.save(new ParkingSlot(i, 1, "MEDIUM"));
             }
-
             for (int i = 18; i <= 20; i++) {
                 slotRepository.save(new ParkingSlot(i, 1, "LARGE"));
             }
-
             System.out.println("Initialized " + TOTAL_SLOTS + " parking slots");
         }
     }
-
-    // ---------------- PARK VEHICLE ----------------
 
     @Transactional
     public Map<String, Object> parkVehicle(
@@ -66,12 +58,18 @@ public class ParkingService {
             String vehicleType,
             String ownerName,
             String phoneNumber,
-            Long userId) {
+            Long userId,
+            Integer slotNumber) {
 
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // ✅ FIX: create final variables for lambda usage
+            System.out.println("=== PARKING SERVICE DEBUG ===");
+            System.out.println("License Plate: " + licensePlate);
+            System.out.println("Vehicle Type: " + vehicleType);
+            System.out.println("User ID: " + userId);
+            System.out.println("Slot Number: " + slotNumber);
+            
             final String normalizedLicensePlate = licensePlate.toUpperCase();
             final String normalizedVehicleType = vehicleType.toUpperCase();
 
@@ -91,44 +89,57 @@ public class ParkingService {
                         return vehicleRepository.save(v);
                     });
 
-            List<Booking> activeBookings =
-                    bookingRepository.findByVehicleId(vehicle.getId());
+            System.out.println("Vehicle ID: " + vehicle.getId());
 
+            List<Booking> activeBookings = bookingRepository.findByVehicleId(vehicle.getId());
             boolean alreadyParked = activeBookings.stream()
                     .anyMatch(b -> "ACTIVE".equals(b.getStatus()));
 
             if (alreadyParked) {
+                System.out.println("Vehicle already parked!");
                 response.put("success", false);
                 response.put("message", "Vehicle is already parked!");
                 return response;
             }
 
-            String slotType = getSlotTypeForVehicle(normalizedVehicleType);
-
-            Optional<ParkingSlot> availableSlot =
-                    slotRepository.findFirstByIsOccupiedFalseAndIsAvailableTrueAndSlotType(slotType);
-
-            if (availableSlot.isEmpty() && !slotType.equals("LARGE")) {
-                availableSlot = slotRepository
-                        .findFirstByIsOccupiedFalseAndIsAvailableTrueAndSlotType("LARGE");
-            }
-
-            if (availableSlot.isEmpty()) {
+            // Use the specific slot user selected
+            if (slotNumber == null) {
                 response.put("success", false);
-                response.put("message", "No available parking slots!");
+                response.put("message", "Please select a parking slot!");
                 return response;
             }
 
-            ParkingSlot slot = availableSlot.get();
+            Optional<ParkingSlot> slotOpt = slotRepository.findBySlotNumber(slotNumber);
+
+            if (slotOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Slot not found!");
+                return response;
+            }
+
+            ParkingSlot slot = slotOpt.get();
+
+            // Check if slot is available - FIXED METHOD NAMES
+            if (slot.getIsOccupied() || !slot.getIsAvailable()) {
+                response.put("success", false);
+                response.put("message", "Slot #" + slotNumber + " is already occupied!");
+                return response;
+            }
+
+            System.out.println("Using slot: " + slot.getSlotNumber());
 
             String bookingNumber = "BK" + System.currentTimeMillis();
             Booking booking = bookingRepository.save(
                     new Booking(vehicle, slot, bookingNumber)
             );
 
+            System.out.println("Booking created: " + bookingNumber);
+
             slot.occupy();
             slot.setCurrentBooking(booking);
             slotRepository.save(slot);
+
+            System.out.println("Slot occupied successfully");
 
             response.put("success", true);
             response.put("message", "Vehicle parked successfully!");
@@ -138,27 +149,22 @@ public class ParkingService {
             response.put("hourlyRate", booking.getHourlyRate());
 
         } catch (Exception e) {
+            System.err.println("=== ERROR IN PARKING SERVICE ===");
+            e.printStackTrace();
             response.put("success", false);
             response.put("message", "Error: " + e.getMessage());
-            e.printStackTrace();
         }
 
         return response;
     }
 
-    // ---------------- REMOVE VEHICLE ----------------
-
     @Transactional
     public Map<String, Object> removeVehicle(String licensePlate) {
-
         Map<String, Object> response = new HashMap<>();
 
         try {
             licensePlate = licensePlate.toUpperCase();
-
-            Vehicle vehicle = vehicleRepository
-                    .findByLicensePlate(licensePlate)
-                    .orElse(null);
+            Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate).orElse(null);
 
             if (vehicle == null) {
                 response.put("success", false);
@@ -166,8 +172,7 @@ public class ParkingService {
                 return response;
             }
 
-            Booking activeBooking = bookingRepository
-                    .findByVehicleId(vehicle.getId())
+            Booking activeBooking = bookingRepository.findByVehicleId(vehicle.getId())
                     .stream()
                     .filter(b -> "ACTIVE".equals(b.getStatus()))
                     .findFirst()
@@ -204,18 +209,12 @@ public class ParkingService {
         return response;
     }
 
-    // ---------------- SEARCH VEHICLE ----------------
-
     public Map<String, Object> searchVehicle(String licensePlate) {
-
         Map<String, Object> response = new HashMap<>();
 
         try {
             licensePlate = licensePlate.toUpperCase();
-
-            Vehicle vehicle = vehicleRepository
-                    .findByLicensePlate(licensePlate)
-                    .orElse(null);
+            Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate).orElse(null);
 
             if (vehicle == null) {
                 response.put("success", false);
@@ -223,8 +222,7 @@ public class ParkingService {
                 return response;
             }
 
-            Booking activeBooking = bookingRepository
-                    .findByVehicleId(vehicle.getId())
+            Booking activeBooking = bookingRepository.findByVehicleId(vehicle.getId())
                     .stream()
                     .filter(b -> "ACTIVE".equals(b.getStatus()))
                     .findFirst()
@@ -236,8 +234,7 @@ public class ParkingService {
 
             if (activeBooking != null) {
                 response.put("booking", activeBooking);
-                response.put("slotNumber",
-                        activeBooking.getParkingSlot().getSlotNumber());
+                response.put("slotNumber", activeBooking.getParkingSlot().getSlotNumber());
             }
 
         } catch (Exception e) {
@@ -247,8 +244,6 @@ public class ParkingService {
 
         return response;
     }
-
-    // ---------------- DASHBOARD DATA ----------------
 
     public List<ParkingSlot> getAllSlots() {
         return slotRepository.findAll();
@@ -263,9 +258,7 @@ public class ParkingService {
     }
 
     public Map<String, Object> generateReport() {
-
         Map<String, Object> report = new HashMap<>();
-
         report.put("totalSlots", TOTAL_SLOTS);
         report.put("availableSlots", getAvailableSlots());
         report.put("occupiedSlots", getOccupiedSlots());
@@ -278,25 +271,19 @@ public class ParkingService {
                 .stream()
                 .mapToDouble(b -> b.getTotalAmount() != null ? b.getTotalAmount() : 0)
                 .sum();
-
         report.put("totalRevenue", totalRevenue);
 
         return report;
     }
 
-    // ---------------- USER BOOKINGS ----------------
-
     public Map<String, Object> getUserBookings(Long userId) {
-
         Map<String, Object> response = new HashMap<>();
 
         try {
             List<Booking> userBookings = bookingRepository.findAll()
                     .stream()
-                    .filter(b ->
-                            b.getVehicle().getUser() != null &&
-                            b.getVehicle().getUser().getId().equals(userId)
-                    )
+                    .filter(b -> b.getVehicle().getUser() != null &&
+                                b.getVehicle().getUser().getId().equals(userId))
                     .toList();
 
             response.put("success", true);
@@ -309,8 +296,6 @@ public class ParkingService {
 
         return response;
     }
-
-    // ---------------- SLOT TYPE LOGIC ----------------
 
     private String getSlotTypeForVehicle(String vehicleType) {
         return switch (vehicleType) {
