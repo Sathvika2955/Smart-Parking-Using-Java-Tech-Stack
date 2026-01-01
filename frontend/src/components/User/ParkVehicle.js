@@ -165,13 +165,28 @@ const ParkVehicle = ({ user }) => {
       const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
       const advanceAmount = vehicleTypeData.rate;
 
-      const parkingResponse = await api.post(`${PARKING_API}/park`, {
-        ...formData,
+      const requestData = {
+        licensePlate: formData.licensePlate,
+        vehicleType: formData.vehicleType,
+        ownerName: formData.ownerName,
+        phoneNumber: formData.phoneNumber,
         userId: user.id,
         slotNumber: selectedSlot.slotNumber,
-        location: userLocation,
+        paymentMethod: 'online',
         upiId: formData.upiId
-      });
+      };
+
+      console.log('=== UPI PAYMENT DEBUG ===');
+      console.log('API URL:', `${PARKING_API}/park`);
+      console.log('Request Data:', requestData);
+      console.log('User Object:', user);
+      console.log('Selected Slot:', selectedSlot);
+      console.log('Location:', userLocation);
+
+      const parkingResponse = await api.post(`${PARKING_API}/park`, requestData);
+
+      console.log('=== SUCCESS RESPONSE ===');
+      console.log('Response Data:', parkingResponse.data);
 
       if (parkingResponse.data && parkingResponse.data.success) {
         // Simulate payment processing
@@ -194,13 +209,25 @@ const ParkVehicle = ({ user }) => {
           setLoading(false);
         }, 2000);
       } else {
+        console.error('Backend returned success=false');
         const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
         showNotification(errorMessage, 'error');
         setLoading(false);
       }
     } catch (error) {
-      console.error('Parking error:', error);
-      showNotification('Payment failed. Please try again.', 'error');
+      console.error('=== ERROR CAUGHT ===');
+      console.error('Full Error Object:', error);
+      console.error('Error Response:', error.response);
+      console.error('Response Data:', error.response?.data);
+      console.error('Response Status:', error.response?.status);
+      console.error('Error Message:', error.message);
+      
+      const errorMsg = error.response?.data?.message || 
+                       error.response?.data?.error ||
+                       error.message ||
+                       'Payment failed. Please try again.';
+      
+      showNotification(errorMsg, 'error');
       setLoading(false);
     }
   };
