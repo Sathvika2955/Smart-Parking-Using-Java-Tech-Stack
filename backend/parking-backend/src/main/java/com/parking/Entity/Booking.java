@@ -47,6 +47,15 @@ public class Booking {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Kolkata")
     private LocalDateTime exitTime;
     
+    // ✅ NEW: User-selected start and end times
+    @Column(name = "start_time")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Kolkata")
+    private LocalDateTime startTime;
+    
+    @Column(name = "end_time")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Kolkata")
+    private LocalDateTime endTime;
+    
     @Column(name = "status", nullable = false)
     private String status; // ACTIVE, COMPLETED, CANCELLED
     
@@ -108,7 +117,24 @@ public class Booking {
         return hours < 1 ? 1 : hours; // Minimum 1 hour charge
     }
     
+    // ✅ NEW: Calculate duration from start/end time
+    public long getScheduledDurationHours() {
+        if (startTime != null && endTime != null) {
+            Duration duration = Duration.between(startTime, endTime);
+            long minutes = duration.toMinutes();
+            return (long) Math.ceil(minutes / 60.0); // Round up
+        }
+        return getParkingDurationHours();
+    }
+    
     public Double calculateTotalAmount() {
+        // ✅ Use scheduled duration if available
+        if (startTime != null && endTime != null) {
+            long hours = getScheduledDurationHours();
+            double baseFee = hours * hourlyRate;
+            double tax = baseFee * 0.18;
+            return baseFee + tax;
+        }
         return getParkingDurationHours() * hourlyRate;
     }
     
@@ -165,6 +191,23 @@ public class Booking {
     
     public void setExitTime(LocalDateTime exitTime) { 
         this.exitTime = exitTime; 
+    }
+    
+    // ✅ NEW: Getters and Setters for start/end time
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+    
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+    
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+    
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
     }
     
     public String getStatus() { 

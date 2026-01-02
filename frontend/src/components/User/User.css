@@ -710,3 +710,77 @@
     width: 100%;
   }
 }
+/* ============================================
+   ADD THESE STYLES AT THE END OF YOUR User.css
+   ============================================ */
+
+/* Fee Estimate Card (for datetime booking) */
+.fee-estimate-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.fee-estimate-card h4 {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.fee-details {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fee-row:last-child {
+  border-bottom: none;
+}
+
+.fee-row.fee-total {
+  border-top: 2px solid rgba(255, 255, 255, 0.4);
+  margin-top: 12px;
+  padding-top: 18px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.fee-row.fee-total strong {
+  font-size: 22px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive for Fee Estimate */
+@media (max-width: 768px) {
+  .fee-estimate-card {
+    margin: 15px 0;
+    padding: 16px;
+  }
+  
+  .fee-row {
+    font-size: 13px;
+    padding: 8px 0;
+  }
+  
+  .fee-row.fee-total {
+    font-size: 16px;
+  }
+  
+  .fee-row.fee-total strong {
+    font-size: 20px;
+  }
+}

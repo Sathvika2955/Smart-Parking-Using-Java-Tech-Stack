@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCar, FaIdCard, FaPhone, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCheck } from 'react-icons/fa';
+import { FaCar, FaIdCard, FaPhone, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCheck, FaClock } from 'react-icons/fa';
 import api from '../../services/api';
 import { PARKING_API, VEHICLE_TYPES } from '../../utils/constants';
 import SlotCard from '../Common/SlotCard';
@@ -13,7 +13,9 @@ const ParkVehicle = ({ user }) => {
     ownerName: user.fullName,
     phoneNumber: user.phoneNumber || '',
     paymentMethod: 'cash',
-    upiId: ''
+    upiId: '',
+    startTime: '',     // ✅ NEW
+    endTime: ''        // ✅ NEW
   });
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -24,6 +26,7 @@ const ParkVehicle = ({ user }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
   const [showUpiModal, setShowUpiModal] = useState(false);
+  const [estimatedFee, setEstimatedFee] = useState(null); // ✅ NEW
 
   // Get GPS location
   useEffect(() => {
@@ -52,6 +55,15 @@ const ParkVehicle = ({ user }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ NEW: Calculate fee when times change
+  useEffect(() => {
+    if (formData.startTime && formData.endTime) {
+      calculateEstimatedFee();
+    } else {
+      setEstimatedFee(null);
+    }
+  }, [formData.startTime, formData.endTime, formData.vehicleType]);
+
   const fetchSlots = async () => {
     try {
       const response = await api.get(`${PARKING_API}/slots`);
@@ -59,6 +71,37 @@ const ParkVehicle = ({ user }) => {
     } catch (error) {
       showNotification('Failed to fetch slots', 'error');
     }
+  };
+
+  // ✅ NEW: Calculate estimated fee
+  const calculateEstimatedFee = () => {
+    const start = new Date(formData.startTime);
+    const end = new Date(formData.endTime);
+    
+    if (end <= start) {
+      setEstimatedFee(null);
+      return;
+    }
+
+    const durationMs = end - start;
+    const minutes = Math.floor(durationMs / (1000 * 60));
+    const hours = Math.ceil(minutes / 60); // Round up
+    
+    const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
+    const ratePerHour = vehicleTypeData ? vehicleTypeData.rate : 20;
+    
+    const baseFee = hours * ratePerHour;
+    const tax = baseFee * 0.18;
+    const total = baseFee + tax;
+
+    setEstimatedFee({
+      minutes,
+      hours,
+      ratePerHour,
+      baseFee: baseFee.toFixed(2),
+      tax: tax.toFixed(2),
+      total: total.toFixed(2)
+    });
   };
 
   const handleChange = (e) => {
@@ -84,6 +127,20 @@ const ParkVehicle = ({ user }) => {
       return;
     }
 
+    // ✅ NEW: Validate times
+    if (!formData.startTime || !formData.endTime) {
+      showNotification('Please select start and end time', 'error');
+      return;
+    }
+
+    const start = new Date(formData.startTime);
+    const end = new Date(formData.endTime);
+
+    if (end <= start) {
+      showNotification('End time must be after start time', 'error');
+      return;
+    }
+
     if (!selectedSlot) {
       showNotification('Please select a parking slot', 'error');
       return;
@@ -104,13 +161,15 @@ const ParkVehicle = ({ user }) => {
 
     try {
       const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
-      const advanceAmount = vehicleTypeData.rate;
+      const advanceAmount = estimatedFee ? estimatedFee.total : vehicleTypeData.rate;
 
       const parkingResponse = await api.post(`${PARKING_API}/park`, {
         ...formData,
         userId: user.id,
         slotNumber: selectedSlot.slotNumber,
-        location: userLocation
+        location: userLocation,
+        startTime: formData.startTime,  // ✅ SEND TO BACKEND
+        endTime: formData.endTime        // ✅ SEND TO BACKEND
       });
 
       if (parkingResponse.data && parkingResponse.data.success) {
@@ -122,7 +181,9 @@ const ParkVehicle = ({ user }) => {
           phoneNumber: formData.phoneNumber,
           email: user.email,
           paymentMethod: 'Cash',
-          amount: advanceAmount
+          amount: advanceAmount,
+          startTime: formData.startTime,   // ✅ INCLUDE
+          endTime: formData.endTime         // ✅ INCLUDE
         };
 
         setBookingDetails(details);
@@ -163,7 +224,7 @@ const ParkVehicle = ({ user }) => {
 
     try {
       const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
-      const advanceAmount = vehicleTypeData.rate;
+      const advanceAmount = estimatedFee ? estimatedFee.total : vehicleTypeData.rate;
 
       const requestData = {
         licensePlate: formData.licensePlate,
@@ -173,23 +234,14 @@ const ParkVehicle = ({ user }) => {
         userId: user.id,
         slotNumber: selectedSlot.slotNumber,
         paymentMethod: 'online',
-        upiId: formData.upiId
+        upiId: formData.upiId,
+        startTime: formData.startTime,  // ✅ SEND TO BACKEND
+        endTime: formData.endTime        // ✅ SEND TO BACKEND
       };
-
-      console.log('=== UPI PAYMENT DEBUG ===');
-      console.log('API URL:', `${PARKING_API}/park`);
-      console.log('Request Data:', requestData);
-      console.log('User Object:', user);
-      console.log('Selected Slot:', selectedSlot);
-      console.log('Location:', userLocation);
 
       const parkingResponse = await api.post(`${PARKING_API}/park`, requestData);
 
-      console.log('=== SUCCESS RESPONSE ===');
-      console.log('Response Data:', parkingResponse.data);
-
       if (parkingResponse.data && parkingResponse.data.success) {
-        // Simulate payment processing
         setTimeout(() => {
           const details = {
             bookingNumber: parkingResponse.data.bookingNumber,
@@ -199,7 +251,9 @@ const ParkVehicle = ({ user }) => {
             phoneNumber: formData.phoneNumber,
             email: user.email,
             paymentMethod: `UPI (${formData.upiId})`,
-            amount: advanceAmount
+            amount: advanceAmount,
+            startTime: formData.startTime,  // ✅ INCLUDE
+            endTime: formData.endTime        // ✅ INCLUDE
           };
 
           setShowUpiModal(false);
@@ -209,19 +263,12 @@ const ParkVehicle = ({ user }) => {
           setLoading(false);
         }, 2000);
       } else {
-        console.error('Backend returned success=false');
         const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
         showNotification(errorMessage, 'error');
         setLoading(false);
       }
     } catch (error) {
-      console.error('=== ERROR CAUGHT ===');
-      console.error('Full Error Object:', error);
-      console.error('Error Response:', error.response);
-      console.error('Response Data:', error.response?.data);
-      console.error('Response Status:', error.response?.status);
-      console.error('Error Message:', error.message);
-      
+      console.error('Payment error:', error);
       const errorMsg = error.response?.data?.message || 
                        error.response?.data?.error ||
                        error.message ||
@@ -240,8 +287,11 @@ const ParkVehicle = ({ user }) => {
     setFormData({
       ...formData,
       licensePlate: '',
-      upiId: ''
+      upiId: '',
+      startTime: '',
+      endTime: ''
     });
+    setEstimatedFee(null);
   };
 
   const showNotification = (message, type) => {
@@ -251,6 +301,32 @@ const ParkVehicle = ({ user }) => {
 
   const getAvailableSlots = () => {
     return slots.filter(slot => !slot.isOccupied && slot.isAvailable);
+  };
+
+  // ✅ NEW: Get minimum datetime
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5);
+    return now.toISOString().slice(0, 16);
+  };
+
+  // ✅ NEW: Get minimum end time
+  const getMinEndTime = () => {
+    if (!formData.startTime) return getMinDateTime();
+    const start = new Date(formData.startTime);
+    start.setMinutes(start.getMinutes() + 30);
+    return start.toISOString().slice(0, 16);
+  };
+
+  // ✅ NEW: Format date time for display
+  const formatDateTime = (dateTime) => {
+    if (!dateTime) return '';
+    return new Date(dateTime).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   // Success Screen
@@ -278,6 +354,19 @@ const ParkVehicle = ({ user }) => {
                 <span>Vehicle:</span>
                 <strong>{bookingDetails.vehicleNumber}</strong>
               </div>
+              {/* ✅ NEW: Show start/end times */}
+              {bookingDetails.startTime && (
+                <div className="summary-row">
+                  <span>Start Time:</span>
+                  <strong>{formatDateTime(bookingDetails.startTime)}</strong>
+                </div>
+              )}
+              {bookingDetails.endTime && (
+                <div className="summary-row">
+                  <span>End Time:</span>
+                  <strong>{formatDateTime(bookingDetails.endTime)}</strong>
+                </div>
+              )}
               <div className="summary-row">
                 <span>Payment Method:</span>
                 <strong>{bookingDetails.paymentMethod}</strong>
@@ -333,9 +422,11 @@ const ParkVehicle = ({ user }) => {
               <div className="amount-display">
                 <h4>Amount to Pay</h4>
                 <div className="amount-value">
-                  ₹{VEHICLE_TYPES.find(v => v.value === formData.vehicleType)?.rate || 20}
+                  ₹{estimatedFee ? estimatedFee.total : (VEHICLE_TYPES.find(v => v.value === formData.vehicleType)?.rate || 20)}
                 </div>
-                <div className="amount-details">1 Hour Advance Payment</div>
+                <div className="amount-details">
+                  {estimatedFee ? `${estimatedFee.hours} Hours` : '1 Hour Advance Payment'}
+                </div>
               </div>
             </div>
             <div className="modal-footer">
@@ -360,7 +451,7 @@ const ParkVehicle = ({ user }) => {
 
       <div className="page-header">
         <h1 className="page-title">Park Vehicle</h1>
-        <p className="page-subtitle">Select a slot and park your vehicle</p>
+        <p className="page-subtitle">Select a slot and schedule your parking</p>
         {userLocation && (
           <div className="location-badge">
             <FaMapMarkerAlt />
@@ -431,6 +522,67 @@ const ParkVehicle = ({ user }) => {
                 />
               </div>
 
+              {/* ✅ NEW: Start Time */}
+              <div className="form-group">
+                <label className="form-label">
+                  <FaClock /> Start Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="startTime"
+                  className="form-input"
+                  value={formData.startTime}
+                  onChange={handleChange}
+                  min={getMinDateTime()}
+                  required
+                />
+              </div>
+
+              {/* ✅ NEW: End Time */}
+              <div className="form-group">
+                <label className="form-label">
+                  <FaClock /> End Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="endTime"
+                  className="form-input"
+                  value={formData.endTime}
+                  onChange={handleChange}
+                  min={getMinEndTime()}
+                  required
+                />
+              </div>
+
+              {/* ✅ NEW: Fee Estimate */}
+              {estimatedFee && (
+                <div className="fee-estimate-card">
+                  <h4><FaMoneyBillWave /> Estimated Fee</h4>
+                  <div className="fee-details">
+                    <div className="fee-row">
+                      <span>Duration:</span>
+                      <span>{estimatedFee.minutes} mins ({estimatedFee.hours} hrs)</span>
+                    </div>
+                    <div className="fee-row">
+                      <span>Rate:</span>
+                      <span>₹{estimatedFee.ratePerHour}/hour</span>
+                    </div>
+                    <div className="fee-row">
+                      <span>Base Fee:</span>
+                      <span>₹{estimatedFee.baseFee}</span>
+                    </div>
+                    <div className="fee-row">
+                      <span>Tax (18% GST):</span>
+                      <span>₹{estimatedFee.tax}</span>
+                    </div>
+                    <div className="fee-row fee-total">
+                      <span>Total Amount:</span>
+                      <strong>₹{estimatedFee.total}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">Payment Method *</label>
                 <div className="payment-options">
@@ -472,7 +624,7 @@ const ParkVehicle = ({ user }) => {
               <button 
                 type="submit" 
                 className="btn btn-primary btn-block"
-                disabled={loading || !selectedSlot}
+                disabled={loading || !selectedSlot || !estimatedFee}
               >
                 {loading ? 'Processing...' : 'Confirm & Pay'}
               </button>
