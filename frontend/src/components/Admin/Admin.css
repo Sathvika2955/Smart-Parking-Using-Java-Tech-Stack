@@ -53,6 +53,29 @@
   font-size: 13px;
 }
 
+/* ✅ NEW: Action Buttons Container */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.action-buttons .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 6px 12px;
+  min-width: 100px;
+}
+
+.action-buttons .btn svg {
+  font-size: 14px;
+}
+
 /* Search Styles */
 .search-container {
   max-width: 900px;
@@ -72,95 +95,315 @@
   padding: 8px 16px;
   border: 2px solid #e2e8f0;
 }
+
 .search-input-wrapper:focus-within {
-border-color: #667eea;
-box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
+
 .search-icon {
-font-size: 20px;
-color: #a0aec0;
+  font-size: 20px;
+  color: #a0aec0;
 }
+
 .search-input {
-flex: 1;
-border: none;
-background: transparent;
-font-size: 16px;
-padding: 12px 0;
-color: #2d3748;
-font-weight: 500;
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  padding: 12px 0;
+  color: #2d3748;
+  font-weight: 500;
 }
+
 .search-input::placeholder {
-color: #a0aec0;
+  color: #a0aec0;
 }
+
 .search-result-card {
-margin-top: 24px;
-animation: fadeIn 0.4s ease-out;
+  margin-top: 24px;
+  animation: fadeIn 0.4s ease-out;
 }
+
 .result-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 24px;
-padding-bottom: 16px;
-border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
 }
+
 .result-header h3 {
-font-size: 22px;
-font-weight: 700;
-color: #2d3748;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2d3748;
 }
+
 .result-grid {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 24px;
-margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
 }
+
 .result-item {
-display: flex;
-align-items: flex-start;
-gap: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
 }
+
 .result-icon {
-font-size: 24px;
-color: #667eea;
-margin-top: 4px;
+  font-size: 24px;
+  color: #667eea;
+  margin-top: 4px;
 }
+
 .result-label {
-font-size: 13px;
-color: #a0aec0;
-font-weight: 500;
-text-transform: uppercase;
-letter-spacing: 0.5px;
-margin-bottom: 6px;
+  font-size: 13px;
+  color: #a0aec0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
+
 .result-value {
-font-size: 18px;
-font-weight: 600;
-color: #2d3748;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
 }
+
 .slot-number-large {
-font-size: 32px;
-color: #667eea;
+  font-size: 32px;
+  color: #667eea;
 }
+
 .remove-vehicle-btn {
-margin-top: 8px;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-font-size: 16px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
 }
+
+/* ============================================
+   LIVE TIMER & BOOKING TABLE STYLES
+   ============================================ */
+
+/* Live Timer Display */
+.elapsed-time-cell {
+  text-align: center;
+}
+
+.timer-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 8px 12px;
+  border-radius: 20px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(102, 126, 234, 0);
+  }
+}
+
+/* ✅ Timer stopped state */
+.timer-display .timer-icon.stopped {
+  animation: none;
+  opacity: 0.6;
+}
+
+.timer-display:has(.timer-icon.stopped) {
+  background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+  animation: none;
+}
+
+.timer-icon {
+  font-size: 16px;
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.timer-value {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  font-size: 15px;
+}
+
+/* Overdue Warning */
+.overdue-badge {
+  font-size: 16px;
+  margin-left: 4px;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.overdue-row {
+  background: #fff5f5 !important;
+}
+
+.overdue-row:hover {
+  background: #fed7d7 !important;
+}
+
+/* Time Display Styles */
+.time-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.time-value {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.time-date {
+  font-size: 11px;
+  color: #718096;
+}
+
+.end-time {
+  font-size: 13px;
+}
+
+/* Duration Badge */
+.duration-cell {
+  text-align: center;
+}
+
+.duration-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Amount Display */
+.amount-cell {
+  text-align: right;
+  font-weight: 600;
+}
+
+.amount-value {
+  color: #48bb78;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.text-muted {
+  color: #a0aec0;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Table Column Widths */
+.table th:nth-child(1) { width: 140px; } /* Booking # */
+.table th:nth-child(2) { width: 120px; } /* Vehicle */
+.table th:nth-child(3) { width: 110px; } /* Owner */
+.table th:nth-child(4) { width: 110px; } /* Phone */
+.table th:nth-child(5) { width: 70px; }  /* Slot */
+.table th:nth-child(6) { width: 160px; } /* Entry Time */
+.table th:nth-child(7) { width: 140px; } /* ⏱️ Elapsed Time */
+.table th:nth-child(8) { width: 110px; } /* End Time */
+.table th:nth-child(9) { width: 90px; }  /* Scheduled */
+.table th:nth-child(10) { width: 100px; } /* Amount */
+.table th:nth-child(11) { width: 90px; } /* Status */
+.table th:nth-child(12) { width: 130px; } /* Actions */
+
 /* Responsive */
 @media (max-width: 768px) {
-.result-grid {
-grid-template-columns: 1fr;
-gap: 16px;
+  .result-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .search-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input-wrapper .btn {
+    width: 100%;
+  }
 }
-.search-input-wrapper {
-flex-direction: column;
-align-items: stretch;
-}
-.search-input-wrapper .btn {
-width: 100%;
-}
+
+/* Responsive adjustments for timer */
+@media (max-width: 1600px) {
+  .table th:nth-child(1),
+  .table th:nth-child(2),
+  .table th:nth-child(3),
+  .table th:nth-child(4),
+  .table th:nth-child(5),
+  .table th:nth-child(6),
+  .table th:nth-child(7),
+  .table th:nth-child(8),
+  .table th:nth-child(9),
+  .table th:nth-child(10),
+  .table th:nth-child(11),
+  .table th:nth-child(12) {
+    width: auto;
+  }
+  
+  .timer-display {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .timer-value {
+    font-size: 13px;
+  }
+  
+  .duration-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  
+  .amount-value {
+    font-size: 14px;
+  }
+  
+  .action-buttons {
+    gap: 6px;
+  }
+  
+  .action-buttons .btn {
+    font-size: 11px;
+    padding: 5px 10px;
+    min-width: 90px;
+  }
 }

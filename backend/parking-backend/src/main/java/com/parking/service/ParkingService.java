@@ -1,5 +1,7 @@
 package com.parking.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,7 @@ public class ParkingService {
         }
     }
 
+    // ✅ UPDATED: Now accepts startTime and endTime as String parameters
     @Transactional
     public Map<String, Object> parkVehicle(
             String licensePlate,
@@ -59,7 +62,9 @@ public class ParkingService {
             String ownerName,
             String phoneNumber,
             Long userId,
-            Integer slotNumber) {
+            Integer slotNumber,
+            String startTimeStr,
+            String endTimeStr) {
 
         Map<String, Object> response = new HashMap<>();
 
@@ -69,6 +74,8 @@ public class ParkingService {
             System.out.println("Vehicle Type: " + vehicleType);
             System.out.println("User ID: " + userId);
             System.out.println("Slot Number: " + slotNumber);
+            System.out.println("Start Time: " + startTimeStr);
+            System.out.println("End Time: " + endTimeStr);
             
             final String normalizedLicensePlate = licensePlate.toUpperCase();
             final String normalizedVehicleType = vehicleType.toUpperCase();
@@ -102,7 +109,6 @@ public class ParkingService {
                 return response;
             }
 
-            // Use the specific slot user selected
             if (slotNumber == null) {
                 response.put("success", false);
                 response.put("message", "Please select a parking slot!");
@@ -119,7 +125,6 @@ public class ParkingService {
 
             ParkingSlot slot = slotOpt.get();
 
-            // Check if slot is available - FIXED METHOD NAMES
             if (slot.getIsOccupied() || !slot.getIsAvailable()) {
                 response.put("success", false);
                 response.put("message", "Slot #" + slotNumber + " is already occupied!");
@@ -129,9 +134,35 @@ public class ParkingService {
             System.out.println("Using slot: " + slot.getSlotNumber());
 
             String bookingNumber = "BK" + System.currentTimeMillis();
-            Booking booking = bookingRepository.save(
-                    new Booking(vehicle, slot, bookingNumber)
-            );
+            Booking booking = new Booking(vehicle, slot, bookingNumber);
+            
+            // ✅ Parse and set start/end times
+            DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+            if (startTimeStr != null && !startTimeStr.isEmpty()) {
+                try {
+                    booking.setStartTime(LocalDateTime.parse(startTimeStr, formatter));
+                    System.out.println("Parsed start time: " + booking.getStartTime());
+                } catch (Exception e) {
+                    System.err.println("Error parsing start time: " + e.getMessage());
+                }
+            }
+            if (endTimeStr != null && !endTimeStr.isEmpty()) {
+                try {
+                    booking.setEndTime(LocalDateTime.parse(endTimeStr, formatter));
+                    System.out.println("Parsed end time: " + booking.getEndTime());
+                } catch (Exception e) {
+                    System.err.println("Error parsing end time: " + e.getMessage());
+                }
+            }
+            
+            // ✅ Calculate amount immediately based on scheduled time
+            if (booking.getStartTime() != null && booking.getEndTime() != null) {
+                Double calculatedAmount = booking.calculateTotalAmount();
+                booking.setTotalAmount(calculatedAmount);
+                System.out.println("Calculated amount: " + calculatedAmount);
+            }
+            
+            booking = bookingRepository.save(booking);
 
             System.out.println("Booking created: " + bookingNumber);
 
@@ -146,7 +177,10 @@ public class ParkingService {
             response.put("bookingNumber", bookingNumber);
             response.put("slotNumber", slot.getSlotNumber());
             response.put("entryTime", booking.getEntryTime());
+            response.put("startTime", booking.getStartTime());
+            response.put("endTime", booking.getEndTime());
             response.put("hourlyRate", booking.getHourlyRate());
+            response.put("totalAmount", booking.getTotalAmount());
 
         } catch (Exception e) {
             System.err.println("=== ERROR IN PARKING SERVICE ===");
@@ -199,6 +233,52 @@ public class ParkingService {
             response.put("exitTime", activeBooking.getExitTime());
             response.put("duration", activeBooking.getParkingDurationHours() + " hours");
             response.put("totalAmount", activeBooking.getTotalAmount());
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return response;
+    }
+
+    // ✅ NEW: Admin checkout booking
+    @Transactional
+    public Map<String, Object> checkoutBooking(Long bookingId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
+            
+            if (bookingOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Booking not found!");
+                return response;
+            }
+
+            Booking booking = bookingOpt.get();
+
+            if (!"ACTIVE".equals(booking.getStatus())) {
+                response.put("success", false);
+                response.put("message", "Booking is not active!");
+                return response;
+            }
+
+            // Complete the booking
+            booking.completeBooking();
+            bookingRepository.save(booking);
+
+            // Free the slot
+            ParkingSlot slot = booking.getParkingSlot();
+            slot.vacate();
+            slotRepository.save(slot);
+
+            response.put("success", true);
+            response.put("message", "Booking completed successfully!");
+            response.put("bookingNumber", booking.getBookingNumber());
+            response.put("totalAmount", booking.getTotalAmount());
+            response.put("exitTime", booking.getExitTime());
 
         } catch (Exception e) {
             response.put("success", false);
@@ -295,14 +375,5 @@ public class ParkingService {
         }
 
         return response;
-    }
-
-    private String getSlotTypeForVehicle(String vehicleType) {
-        return switch (vehicleType) {
-            case "BIKE" -> "SMALL";
-            case "CAR" -> "MEDIUM";
-            case "SUV", "TRUCK" -> "LARGE";
-            default -> "MEDIUM";
-        };
     }
 }

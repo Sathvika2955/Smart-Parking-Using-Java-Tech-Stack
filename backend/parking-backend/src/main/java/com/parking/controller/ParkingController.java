@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,9 +48,12 @@ public class ParkingController {
         Long userId = request.get("userId") != null ? Long.valueOf(request.get("userId").toString()) : null;
         Integer slotNumber = request.get("slotNumber") != null ? Integer.valueOf(request.get("slotNumber").toString()) : null;
         
-        // UPDATED: Now passing slotNumber as 6th parameter
+        // ✅ NEW: Get start and end time from request
+        String startTimeStr = (String) request.get("startTime");
+        String endTimeStr = (String) request.get("endTime");
+        
         Map<String, Object> response = parkingService.parkVehicle(
-            licensePlate, vehicleType, ownerName, phoneNumber, userId, slotNumber
+            licensePlate, vehicleType, ownerName, phoneNumber, userId, slotNumber, startTimeStr, endTimeStr
         );
         
         return ResponseEntity.ok(response);
@@ -58,6 +62,13 @@ public class ParkingController {
     @DeleteMapping("/remove/{licensePlate}")
     public ResponseEntity<Map<String, Object>> removeVehicle(@PathVariable String licensePlate) {
         Map<String, Object> response = parkingService.removeVehicle(licensePlate);
+        return ResponseEntity.ok(response);
+    }
+
+    // ✅ NEW: Checkout endpoint for admin to complete booking
+    @PutMapping("/checkout/{bookingId}")
+    public ResponseEntity<Map<String, Object>> checkoutBooking(@PathVariable Long bookingId) {
+        Map<String, Object> response = parkingService.checkoutBooking(bookingId);
         return ResponseEntity.ok(response);
     }
 
