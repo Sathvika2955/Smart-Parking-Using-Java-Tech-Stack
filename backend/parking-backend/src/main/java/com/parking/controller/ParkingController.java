@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.parking.entity.ParkingSlot;
@@ -36,6 +37,21 @@ public class ParkingController {
         ));
     }
 
+    // ✅ NEW: Find nearby parking slots
+    @GetMapping("/nearby")
+    public ResponseEntity<Map<String, Object>> findNearbySlots(
+            @RequestParam Double latitude,
+            @RequestParam Double longitude,
+            @RequestParam(defaultValue = "5.0") Double radius) {
+        
+        System.out.println("=== NEARBY SLOTS REQUEST ===");
+        System.out.println("User Location: " + latitude + ", " + longitude);
+        System.out.println("Search Radius: " + radius + " km");
+        
+        Map<String, Object> response = parkingService.findNearbySlots(latitude, longitude, radius);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/park")
     public ResponseEntity<Map<String, Object>> parkVehicle(@RequestBody Map<String, Object> request) {
         System.out.println("=== PARK VEHICLE REQUEST ===");
@@ -48,7 +64,6 @@ public class ParkingController {
         Long userId = request.get("userId") != null ? Long.valueOf(request.get("userId").toString()) : null;
         Integer slotNumber = request.get("slotNumber") != null ? Integer.valueOf(request.get("slotNumber").toString()) : null;
         
-        // ✅ NEW: Get start and end time from request
         String startTimeStr = (String) request.get("startTime");
         String endTimeStr = (String) request.get("endTime");
         
@@ -65,7 +80,6 @@ public class ParkingController {
         return ResponseEntity.ok(response);
     }
 
-    // ✅ NEW: Checkout endpoint for admin to complete booking
     @PutMapping("/checkout/{bookingId}")
     public ResponseEntity<Map<String, Object>> checkoutBooking(@PathVariable Long bookingId) {
         Map<String, Object> response = parkingService.checkoutBooking(bookingId);

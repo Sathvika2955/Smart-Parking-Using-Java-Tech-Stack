@@ -2,10 +2,12 @@ package com.parking.service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,16 +43,64 @@ public class ParkingService {
     @PostConstruct
     public void initializeSlots() {
         if (slotRepository.count() == 0) {
+            Random random = new Random();
+            
+            // Sample locations around Kakinada
+            double[][] locations = {
+                {16.9891, 82.2475}, // Main area
+                {16.9850, 82.2450}, // Beach road
+                {16.9920, 82.2500}  // Railway station
+            };
+            
+            String[] locationNames = {
+                "Kakinada Main Parking",
+                "Beach Road Parking",
+                "Railway Station Parking"
+            };
+            
+            // Slots 1-10: SMALL
             for (int i = 1; i <= 10; i++) {
-                slotRepository.save(new ParkingSlot(i, 1, "SMALL"));
+                int locIndex = random.nextInt(locations.length);
+                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
+                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
+                
+                ParkingSlot slot = new ParkingSlot(i, 1, "SMALL");
+                slot.setLatitude(lat);
+                slot.setLongitude(lon);
+                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
+                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
+                slotRepository.save(slot);
             }
+            
+            // Slots 11-17: MEDIUM
             for (int i = 11; i <= 17; i++) {
-                slotRepository.save(new ParkingSlot(i, 1, "MEDIUM"));
+                int locIndex = random.nextInt(locations.length);
+                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
+                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
+                
+                ParkingSlot slot = new ParkingSlot(i, 1, "MEDIUM");
+                slot.setLatitude(lat);
+                slot.setLongitude(lon);
+                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
+                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
+                slotRepository.save(slot);
             }
+            
+            // Slots 18-20: LARGE
             for (int i = 18; i <= 20; i++) {
-                slotRepository.save(new ParkingSlot(i, 1, "LARGE"));
+                int locIndex = random.nextInt(locations.length);
+                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
+                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
+                
+                ParkingSlot slot = new ParkingSlot(i, 1, "LARGE");
+                slot.setLatitude(lat);
+                slot.setLongitude(lon);
+                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
+                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
+                slotRepository.save(slot);
             }
-            System.out.println("Initialized " + TOTAL_SLOTS + " parking slots");
+            
+            System.out.println("✅ Initialized " + TOTAL_SLOTS + " parking slots with GPS coordinates");
         }
     }
 
@@ -114,7 +164,6 @@ public class ParkingService {
                 return response;
             }
 
-            // ✅ FIX: Refresh slot from database to avoid stale state
             Optional<ParkingSlot> slotOpt = slotRepository.findBySlotNumber(slotNumber);
 
             if (slotOpt.isEmpty()) {
@@ -125,10 +174,8 @@ public class ParkingService {
 
             ParkingSlot slot = slotOpt.get();
             
-            // ✅ FIX: Double-check slot availability to prevent race conditions
             if (slot.getIsOccupied() || !slot.getIsAvailable()) {
                 System.out.println("Slot already occupied - refreshing from DB");
-                // Force refresh from database
                 slot = slotRepository.findById(slot.getId()).orElse(slot);
                 
                 if (slot.getIsOccupied() || !slot.getIsAvailable()) {
@@ -167,16 +214,12 @@ public class ParkingService {
                 System.out.println("Calculated amount: " + calculatedAmount);
             }
             
-            // ✅ FIX: Save booking first
             booking = bookingRepository.save(booking);
             System.out.println("Booking created: " + bookingNumber);
 
-            // ✅ FIX: Then update slot
             slot.occupy();
             slot.setCurrentBooking(booking);
             slot = slotRepository.save(slot);
-            
-            // ✅ FIX: Force flush to database
             slotRepository.flush();
 
             System.out.println("Slot occupied successfully");
@@ -185,6 +228,17 @@ public class ParkingService {
             response.put("message", "Vehicle parked successfully!");
             response.put("bookingNumber", bookingNumber);
             response.put("slotNumber", slot.getSlotNumber());
+            
+            // ✅ ADD: Include location information in response
+            if (slot.getLatitude() != null && slot.getLongitude() != null) {
+                Map<String, Object> location = new HashMap<>();
+                location.put("latitude", slot.getLatitude());
+                location.put("longitude", slot.getLongitude());
+                location.put("name", slot.getLocationName());
+                location.put("address", slot.getAddress());
+                response.put("location", location);
+            }
+            
             response.put("entryTime", booking.getEntryTime());
             response.put("startTime", booking.getStartTime());
             response.put("endTime", booking.getEndTime());
@@ -343,7 +397,6 @@ public class ParkingService {
         return slotRepository.countByIsOccupied(true);
     }
 
-    // ✅ UPDATED: Now returns both active and completed bookings
     public Map<String, Object> generateReport() {
         Map<String, Object> report = new HashMap<>();
         report.put("totalSlots", TOTAL_SLOTS);
@@ -354,7 +407,7 @@ public class ParkingService {
         List<Booking> completedBookings = bookingRepository.findByStatus("COMPLETED");
         
         report.put("activeBookings", activeBookings);
-        report.put("completedBookings", completedBookings); // ✅ NEW
+        report.put("completedBookings", completedBookings);
         report.put("totalActiveBookings", activeBookings.size());
 
         double totalRevenue = completedBookings.stream()
@@ -384,5 +437,64 @@ public class ParkingService {
         }
 
         return response;
+    }
+
+    // ✅ NEW: Find nearby parking slots
+    public Map<String, Object> findNearbySlots(Double userLat, Double userLon, Double radiusKm) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<ParkingSlot> allSlots = slotRepository.findAll();
+            List<Map<String, Object>> nearbySlots = new ArrayList<>();
+            
+            for (ParkingSlot slot : allSlots) {
+                if (slot.getLatitude() != null && slot.getLongitude() != null) {
+                    double distance = calculateDistance(
+                        userLat, userLon, 
+                        slot.getLatitude(), slot.getLongitude()
+                    );
+                    
+                    if (distance <= radiusKm) {
+                        Map<String, Object> slotData = new HashMap<>();
+                        slotData.put("slot", slot);
+                        slotData.put("distance", Math.round(distance * 100.0) / 100.0);
+                        nearbySlots.add(slotData);
+                    }
+                }
+            }
+            
+            // Sort by distance
+            nearbySlots.sort((a, b) -> 
+                Double.compare((Double) a.get("distance"), (Double) b.get("distance"))
+            );
+            
+            response.put("success", true);
+            response.put("userLocation", Map.of("latitude", userLat, "longitude", userLon));
+            response.put("nearbySlots", nearbySlots);
+            response.put("totalFound", nearbySlots.size());
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error finding nearby slots: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return response;
+    }
+    
+    // ✅ NEW: Calculate distance between two GPS coordinates (Haversine formula)
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Earth's radius in km
+        
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return R * c;
     }
 }

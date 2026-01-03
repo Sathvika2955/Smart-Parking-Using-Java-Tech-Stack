@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaCar, FaIdCard, FaPhone, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCheck, FaClock } from 'react-icons/fa';
+import { FaCar, FaIdCard, FaPhone, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCheck, FaClock, FaMap } from 'react-icons/fa';
 import api from '../../services/api';
 import { PARKING_API, VEHICLE_TYPES } from '../../utils/constants';
+import ParkingMap from './ParkingMap';
 import SlotCard from '../Common/SlotCard';
 import Notification from '../Common/Notification';
 import './User.css';
@@ -14,21 +15,20 @@ const ParkVehicle = ({ user }) => {
     phoneNumber: user.phoneNumber || '',
     paymentMethod: 'cash',
     upiId: '',
-    startTime: '',     // ✅ NEW
-    endTime: ''        // ✅ NEW
+    startTime: '',
+    endTime: ''
   });
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [locationError, setLocationError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
   const [showUpiModal, setShowUpiModal] = useState(false);
-  const [estimatedFee, setEstimatedFee] = useState(null); // ✅ NEW
+  const [estimatedFee, setEstimatedFee] = useState(null);
+  const [viewMode, setViewMode] = useState('map'); // 'map' or 'grid'
 
-  // Get GPS location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -37,25 +37,22 @@ const ParkVehicle = ({ user }) => {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
           });
-          setLocationError('');
         },
         (error) => {
-          setLocationError('Unable to get location. Showing default parking area.');
           console.error('Location error:', error);
         }
       );
-    } else {
-      setLocationError('Geolocation is not supported by your browser.');
     }
   }, []);
 
   useEffect(() => {
-    fetchSlots();
-    const interval = setInterval(fetchSlots, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    if (viewMode === 'grid') {
+      fetchSlots();
+      const interval = setInterval(fetchSlots, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [viewMode]);
 
-  // ✅ NEW: Calculate fee when times change
   useEffect(() => {
     if (formData.startTime && formData.endTime) {
       calculateEstimatedFee();
@@ -73,7 +70,6 @@ const ParkVehicle = ({ user }) => {
     }
   };
 
-  // ✅ NEW: Calculate estimated fee
   const calculateEstimatedFee = () => {
     const start = new Date(formData.startTime);
     const end = new Date(formData.endTime);
@@ -85,7 +81,7 @@ const ParkVehicle = ({ user }) => {
 
     const durationMs = end - start;
     const minutes = Math.floor(durationMs / (1000 * 60));
-    const hours = Math.ceil(minutes / 60); // Round up
+    const hours = Math.ceil(minutes / 60);
     
     const vehicleTypeData = VEHICLE_TYPES.find(v => v.value === formData.vehicleType);
     const ratePerHour = vehicleTypeData ? vehicleTypeData.rate : 20;
@@ -117,17 +113,15 @@ const ParkVehicle = ({ user }) => {
       return;
     }
     setSelectedSlot(slot);
+    showNotification(`Slot #${slot.slotNumber} selected`, 'success');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     if (!formData.licensePlate || !formData.phoneNumber) {
       showNotification('Please fill all required fields', 'error');
       return;
     }
 
-    // ✅ NEW: Validate times
     if (!formData.startTime || !formData.endTime) {
       showNotification('Please select start and end time', 'error');
       return;
@@ -146,13 +140,11 @@ const ParkVehicle = ({ user }) => {
       return;
     }
 
-    // If online payment selected, show UPI modal
     if (formData.paymentMethod === 'online') {
       setShowUpiModal(true);
       return;
     }
 
-    // Process cash payment
     processCashPayment();
   };
 
@@ -168,8 +160,8 @@ const ParkVehicle = ({ user }) => {
         userId: user.id,
         slotNumber: selectedSlot.slotNumber,
         location: userLocation,
-        startTime: formData.startTime,  // ✅ SEND TO BACKEND
-        endTime: formData.endTime        // ✅ SEND TO BACKEND
+        startTime: formData.startTime,
+        endTime: formData.endTime
       });
 
       if (parkingResponse.data && parkingResponse.data.success) {
@@ -182,32 +174,24 @@ const ParkVehicle = ({ user }) => {
           email: user.email,
           paymentMethod: 'Cash',
           amount: advanceAmount,
-          startTime: formData.startTime,   // ✅ INCLUDE
-          endTime: formData.endTime         // ✅ INCLUDE
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          location: parkingResponse.data.location
         };
 
         setBookingDetails(details);
         setShowSuccess(true);
-        fetchSlots();
+        if (viewMode === 'grid') fetchSlots();
       } else {
-        const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
-        showNotification(errorMessage, 'error');
-        fetchSlots();
+        showNotification(parkingResponse.data?.message || 'Failed to park vehicle', 'error');
+        if (viewMode === 'grid') fetchSlots();
         setSelectedSlot(null);
       }
     } catch (error) {
       console.error('Parking error:', error);
-      
-      if (error.response) {
-        const errorMessage = error.response.data?.message || 
-                            error.response.data?.error || 
-                            'Vehicle is already parked or slot is occupied';
-        showNotification(errorMessage, 'error');
-      } else {
-        showNotification('Failed to park vehicle. Please try again.', 'error');
-      }
-      
-      fetchSlots();
+      const errorMessage = error.response?.data?.message || 'Failed to park vehicle';
+      showNotification(errorMessage, 'error');
+      if (viewMode === 'grid') fetchSlots();
       setSelectedSlot(null);
     } finally {
       setLoading(false);
@@ -216,7 +200,7 @@ const ParkVehicle = ({ user }) => {
 
   const handleUpiPayment = async () => {
     if (!formData.upiId || !formData.upiId.includes('@')) {
-      showNotification('Please enter a valid UPI ID (e.g., abc@paytm)', 'error');
+      showNotification('Please enter a valid UPI ID', 'error');
       return;
     }
 
@@ -235,8 +219,8 @@ const ParkVehicle = ({ user }) => {
         slotNumber: selectedSlot.slotNumber,
         paymentMethod: 'online',
         upiId: formData.upiId,
-        startTime: formData.startTime,  // ✅ SEND TO BACKEND
-        endTime: formData.endTime        // ✅ SEND TO BACKEND
+        startTime: formData.startTime,
+        endTime: formData.endTime
       };
 
       const parkingResponse = await api.post(`${PARKING_API}/park`, requestData);
@@ -252,28 +236,24 @@ const ParkVehicle = ({ user }) => {
             email: user.email,
             paymentMethod: `UPI (${formData.upiId})`,
             amount: advanceAmount,
-            startTime: formData.startTime,  // ✅ INCLUDE
-            endTime: formData.endTime        // ✅ INCLUDE
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            location: parkingResponse.data.location
           };
 
           setShowUpiModal(false);
           setBookingDetails(details);
           setShowSuccess(true);
-          fetchSlots();
+          if (viewMode === 'grid') fetchSlots();
           setLoading(false);
         }, 2000);
       } else {
-        const errorMessage = parkingResponse.data?.message || 'Failed to park vehicle';
-        showNotification(errorMessage, 'error');
+        showNotification(parkingResponse.data?.message || 'Failed to park vehicle', 'error');
         setLoading(false);
       }
     } catch (error) {
       console.error('Payment error:', error);
-      const errorMsg = error.response?.data?.message || 
-                       error.response?.data?.error ||
-                       error.message ||
-                       'Payment failed. Please try again.';
-      
+      const errorMsg = error.response?.data?.message || 'Payment failed';
       showNotification(errorMsg, 'error');
       setLoading(false);
     }
@@ -299,18 +279,12 @@ const ParkVehicle = ({ user }) => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const getAvailableSlots = () => {
-    return slots.filter(slot => !slot.isOccupied && slot.isAvailable);
-  };
-
-  // ✅ NEW: Get minimum datetime
   const getMinDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 5);
     return now.toISOString().slice(0, 16);
   };
 
-  // ✅ NEW: Get minimum end time
   const getMinEndTime = () => {
     if (!formData.startTime) return getMinDateTime();
     const start = new Date(formData.startTime);
@@ -318,7 +292,6 @@ const ParkVehicle = ({ user }) => {
     return start.toISOString().slice(0, 16);
   };
 
-  // ✅ NEW: Format date time for display
   const formatDateTime = (dateTime) => {
     if (!dateTime) return '';
     return new Date(dateTime).toLocaleString('en-IN', {
@@ -329,7 +302,6 @@ const ParkVehicle = ({ user }) => {
     });
   };
 
-  // Success Screen
   if (showSuccess && bookingDetails) {
     return (
       <div className="page-container">
@@ -354,7 +326,12 @@ const ParkVehicle = ({ user }) => {
                 <span>Vehicle:</span>
                 <strong>{bookingDetails.vehicleNumber}</strong>
               </div>
-              {/* ✅ NEW: Show start/end times */}
+              {bookingDetails.location && (
+                <div className="summary-row">
+                  <span>Location:</span>
+                  <strong>{bookingDetails.location.name}</strong>
+                </div>
+              )}
               {bookingDetails.startTime && (
                 <div className="summary-row">
                   <span>Start Time:</span>
@@ -396,7 +373,6 @@ const ParkVehicle = ({ user }) => {
         />
       )}
 
-      {/* UPI Payment Modal */}
       {showUpiModal && (
         <div className="modal-overlay">
           <div className="upi-modal">
@@ -411,12 +387,12 @@ const ParkVehicle = ({ user }) => {
                   type="text"
                   name="upiId"
                   className="form-input"
-                  placeholder="e.g., yourname@paytm, yourname@gpay"
+                  placeholder="e.g., yourname@paytm"
                   value={formData.upiId}
                   onChange={handleChange}
                   autoFocus
                 />
-                <p className="upi-hint">Supported: GPay, PhonePe, Paytm, BHIM, etc.</p>
+                <p className="upi-hint">Supported: GPay, PhonePe, Paytm, BHIM</p>
               </div>
               
               <div className="amount-display">
@@ -425,7 +401,7 @@ const ParkVehicle = ({ user }) => {
                   ₹{estimatedFee ? estimatedFee.total : (VEHICLE_TYPES.find(v => v.value === formData.vehicleType)?.rate || 20)}
                 </div>
                 <div className="amount-details">
-                  {estimatedFee ? `${estimatedFee.hours} Hours` : '1 Hour Advance Payment'}
+                  {estimatedFee ? `${estimatedFee.hours} Hours` : '1 Hour Advance'}
                 </div>
               </div>
             </div>
@@ -455,11 +431,8 @@ const ParkVehicle = ({ user }) => {
         {userLocation && (
           <div className="location-badge">
             <FaMapMarkerAlt />
-            <span>Location: Lat {userLocation.latitude.toFixed(4)}, Lon {userLocation.longitude.toFixed(4)}</span>
+            <span>Your location detected</span>
           </div>
-        )}
-        {locationError && (
-          <div className="location-error">{locationError}</div>
         )}
       </div>
 
@@ -470,7 +443,7 @@ const ParkVehicle = ({ user }) => {
               <h3 className="card-title">Vehicle Details</h3>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <div>
               <div className="form-group">
                 <label className="form-label">
                   <FaIdCard /> License Plate Number *
@@ -522,7 +495,6 @@ const ParkVehicle = ({ user }) => {
                 />
               </div>
 
-              {/* ✅ NEW: Start Time */}
               <div className="form-group">
                 <label className="form-label">
                   <FaClock /> Start Time *
@@ -538,7 +510,6 @@ const ParkVehicle = ({ user }) => {
                 />
               </div>
 
-              {/* ✅ NEW: End Time */}
               <div className="form-group">
                 <label className="form-label">
                   <FaClock /> End Time *
@@ -554,7 +525,6 @@ const ParkVehicle = ({ user }) => {
                 />
               </div>
 
-              {/* ✅ NEW: Fee Estimate */}
               {estimatedFee && (
                 <div className="fee-estimate-card">
                   <h4><FaMoneyBillWave /> Estimated Fee</h4>
@@ -618,17 +588,23 @@ const ParkVehicle = ({ user }) => {
                     <div className="selected-slot-number">#{selectedSlot.slotNumber}</div>
                     <div className="selected-slot-type">{selectedSlot.slotType}</div>
                   </div>
+                  {selectedSlot.locationName && (
+                    <div style={{ fontSize: '13px', color: '#718096', marginTop: '8px' }}>
+                      📍 {selectedSlot.locationName}
+                    </div>
+                  )}
                 </div>
               )}
 
               <button 
-                type="submit" 
+                type="button"
+                onClick={handleSubmit}
                 className="btn btn-primary btn-block"
                 disabled={loading || !selectedSlot || !estimatedFee}
               >
                 {loading ? 'Processing...' : 'Confirm & Pay'}
               </button>
-            </form>
+            </div>
           </div>
         </div>
 
@@ -636,21 +612,43 @@ const ParkVehicle = ({ user }) => {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Select Parking Slot</h3>
-              <span className="available-count">
-                {getAvailableSlots().length} Available
-              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className={`btn ${viewMode === 'map' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setViewMode('map')}
+                  style={{ padding: '8px 16px', fontSize: '14px' }}
+                >
+                  <FaMap /> Map View
+                </button>
+                <button
+                  className={`btn ${viewMode === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setViewMode('grid')}
+                  style={{ padding: '8px 16px', fontSize: '14px' }}
+                >
+                  Grid View
+                </button>
+              </div>
             </div>
 
-            <div className="slots-grid">
-              {slots.map(slot => (
-                <SlotCard
-                  key={slot.id}
-                  slot={slot}
-                  selected={selectedSlot?.id === slot.id}
-                  onSelect={handleSlotSelect}
+            {viewMode === 'map' ? (
+              <div style={{ height: '600px' }}>
+                <ParkingMap 
+                  onSlotSelect={handleSlotSelect}
+                  selectedSlot={selectedSlot}
                 />
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="slots-grid">
+                {slots.map(slot => (
+                  <SlotCard
+                    key={slot.id}
+                    slot={slot}
+                    selected={selectedSlot?.id === slot.id}
+                    onSelect={handleSlotSelect}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
