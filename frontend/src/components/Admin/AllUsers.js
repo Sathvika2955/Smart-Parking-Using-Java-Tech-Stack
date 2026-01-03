@@ -1,39 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { FaUsers, FaUserShield, FaUser } from 'react-icons/fa';
+import { FaUsers, FaUserCheck, FaUserClock, FaCar } from 'react-icons/fa';
 import api from '../../services/api';
-import { AUTH_API } from '../../utils/constants';
+import { AUTH_API, PARKING_API } from '../../utils/constants';
 import Notification from '../Common/Notification';
 import './Admin.css';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
-  const [stats, setStats] = useState({ total: 0, admins: 0, customers: 0 });
-  const [filter, setFilter] = useState('ALL');
+  const [userBookingMap, setUserBookingMap] = useState({});
+  const [stats, setStats] = useState({ total: 0, withBookings: 0, activeBookings: 0 });
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // More frequent updates
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     try {
-      const response = await api.get(`${AUTH_API}/users`);
-      if (response.data.success) {
-        const allUsers = response.data.users;
-        setUsers(allUsers);
+      console.log('=== FETCHING ALL USERS DATA ===');
+      
+      // Fetch all users
+      const usersResponse = await api.get(`${AUTH_API}/users`);
+      const allUsers = usersResponse.data;
+      console.log('Users fetched:', allUsers.length);
+
+      // Fetch all bookings to get user booking info
+      const bookingsResponse = await api.get(`${PARKING_API}/report`);
+      const activeBookings = bookingsResponse.data.activeBookings || [];
+      const completedBookings = bookingsResponse.data.completedBookings || [];
+      
+      console.log('Active bookings:', activeBookings.length);
+      console.log('Completed bookings:', completedBookings.length);
+
+      // ✅ IMPORTANT: Include BOTH active and completed bookings
+      const allBookings = [...activeBookings, ...completedBookings];
+
+      // Create a map of userId -> booking counts
+      const bookingMap = {};
+      
+      allBookings.forEach(booking => {
+        const userId = booking.vehicle?.user?.id;
+        console.log('Processing booking:', booking.bookingNumber, 'User ID:', userId, 'Status:', booking.status);
         
-        const admins = allUsers.filter(u => u.userType === 'ADMIN').length;
-        const customers = allUsers.filter(u => u.userType === 'CUSTOMER').length;
-        
-        setStats({
-          total: allUsers.length,
-          admins,
-          customers
-        });
-      }
+        if (userId) {
+          if (!bookingMap[userId]) {
+            bookingMap[userId] = { 
+              total: 0, 
+              active: 0,
+              completed: 0 
+            };
+          }
+          
+          bookingMap[userId].total++;
+          
+          if (booking.status === 'ACTIVE') {
+            bookingMap[userId].active++;
+          } else if (booking.status === 'COMPLETED') {
+            bookingMap[userId].completed++;
+          }
+        }
+      });
+
+      console.log('User booking map:', bookingMap);
+
+      // Calculate stats
+      const usersWithBookings = Object.keys(bookingMap).length;
+      const totalActiveBookings = Object.values(bookingMap).reduce(
+        (sum, user) => sum + user.active, 0
+      );
+
+      console.log('Stats - With Bookings:', usersWithBookings, 'Active Now:', totalActiveBookings);
+
+      setUsers(allUsers);
+      setUserBookingMap(bookingMap);
+      setStats({
+        total: allUsers.length,
+        withBookings: usersWithBookings,
+        activeBookings: totalActiveBookings
+      });
     } catch (error) {
-      showNotification('Failed to fetch users', 'error');
+      console.error('Error fetching data:', error);
+      showNotification('Failed to fetch users data', 'error');
     } finally {
       setLoading(false);
     }
@@ -44,23 +94,36 @@ const AllUsers = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const getFilteredUsers = () => {
-    switch (filter) {
-      case 'ADMIN':
-        return users.filter(u => u.userType === 'ADMIN');
-      case 'CUSTOMER':
-        return users.filter(u => u.userType === 'CUSTOMER');
-      default:
-        return users;
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return 'N/A';
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+  const getUserStatus = (userId) => {
+    const userBooking = userBookingMap[userId];
+    
+    if (!userBooking || userBooking.total === 0) {
+      return { label: 'No Bookings', className: 'secondary' };
+    }
+    
+    if (userBooking.active > 0) {
+      return { label: 'Active', className: 'success' };
+    }
+    
+    // ✅ Show "Completed" if user has bookings but none active
+    return { label: 'Completed', className: 'info' };
+  };
+
+  const getUserBookingStats = (userId) => {
+    return userBookingMap[userId] || { total: 0, active: 0, completed: 0 };
   };
 
   if (loading) {
@@ -79,7 +142,7 @@ const AllUsers = () => {
 
       <div className="page-header">
         <h1 className="page-title">All Users</h1>
-        <p className="page-subtitle">Manage registered users</p>
+        <p className="page-subtitle">Manage registered users and their bookings</p>
       </div>
 
       <div className="stats-grid">
@@ -94,22 +157,22 @@ const AllUsers = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon danger">
-            <FaUserShield />
+          <div className="stat-icon success">
+            <FaUserCheck />
           </div>
           <div className="stat-content">
-            <div className="stat-label">Admins</div>
-            <div className="stat-value">{stats.admins}</div>
+            <div className="stat-label">With Bookings</div>
+            <div className="stat-value">{stats.withBookings}</div>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon success">
-            <FaUser />
+          <div className="stat-icon warning">
+            <FaUserClock />
           </div>
           <div className="stat-content">
-            <div className="stat-label">Customers</div>
-            <div className="stat-value">{stats.customers}</div>
+            <div className="stat-label">Active Now</div>
+            <div className="stat-value">{stats.activeBookings}</div>
           </div>
         </div>
       </div>
@@ -117,25 +180,8 @@ const AllUsers = () => {
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">Users List</h3>
-          <div className="filter-buttons">
-            <button 
-              className={`btn btn-secondary ${filter === 'ALL' ? 'active' : ''}`}
-              onClick={() => setFilter('ALL')}
-            >
-              All
-            </button>
-            <button 
-              className={`btn btn-danger ${filter === 'ADMIN' ? 'active' : ''}`}
-              onClick={() => setFilter('ADMIN')}
-            >
-              Admins
-            </button>
-            <button 
-              className={`btn btn-success ${filter === 'CUSTOMER' ? 'active' : ''}`}
-              onClick={() => setFilter('CUSTOMER')}
-            >
-              Customers
-            </button>
+          <div className="card-subtitle">
+            Total: {users.length} users
           </div>
         </div>
 
@@ -143,33 +189,75 @@ const AllUsers = () => {
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Full Name</th>
+                <th>User ID</th>
+                <th>Name</th>
                 <th>Username</th>
                 <th>Email</th>
                 <th>Phone</th>
-                <th>Type</th>
-                <th>Registered</th>
+                <th>Role</th>
+                <th>Registered On</th>
+                <th>Total Bookings</th>
+                <th>Active Bookings</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {getFilteredUsers().map((user) => (
-                <tr key={user.id}>
-                  <td>#{user.id}</td>
-                  <td>{user.fullName}</td>
-                  <td>{user.username}</td>
-                  <td>{user.email}</td>
-                  <td>{user.phoneNumber || 'N/A'}</td>
-                  <td>
-                    <span className={`badge badge-${user.userType === 'ADMIN' ? 'danger' : 'info'}`}>
-                      {user.userType}
-                    </span>
-                  </td>
-                  <td>{formatDate(user.createdAt)}</td>
-                </tr>
-              ))}
+              {users.map((user) => {
+                const status = getUserStatus(user.id);
+                const bookingStats = getUserBookingStats(user.id);
+
+                return (
+                  <tr key={user.id}>
+                    <td className="user-id">#{user.id}</td>
+                    <td className="user-name">{user.fullName || '-'}</td>
+                    <td className="user-username">{user.username || '-'}</td>
+                    <td className="user-email">{user.email}</td>
+                    <td className="user-phone">{user.phoneNumber || 'N/A'}</td>
+                    <td>
+                      <span className={`badge badge-${user.userType === 'ADMIN' ? 'danger' : 'primary'}`}>
+                        {user.userType}
+                      </span>
+                    </td>
+                    <td className="registered-date">{formatDate(user.createdAt)}</td>
+                    
+                    {/* ✅ Total Bookings - Shows even after checkout */}
+                    <td className="text-center">
+                      {bookingStats.total > 0 ? (
+                        <div className="vehicle-count">
+                          <FaCar className="vehicle-icon" />
+                          <span>{bookingStats.total}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </td>
+                    
+                    {/* ✅ Active Bookings - Shows only active count */}
+                    <td className="text-center">
+                      {bookingStats.active > 0 ? (
+                        <span className="active-booking-badge">{bookingStats.active}</span>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </td>
+                    
+                    <td>
+                      <span className={`badge badge-${status.className}`}>
+                        {status.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+
+          {users.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-state-icon"><FaUsers /></div>
+              <div className="empty-state-text">No users registered yet</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

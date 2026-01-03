@@ -1,11 +1,23 @@
 package com.parking.controller;
 
-import com.parking.entity.User;
-import com.parking.service.AuthService;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.Map;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.parking.entity.User;
+import com.parking.repository.UserRepository;
+import com.parking.service.AuthService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -14,6 +26,9 @@ public class AuthController {
     
     @Autowired
     private AuthService authService;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     // Register new user
     @PostMapping("/register")
@@ -32,11 +47,12 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
     
-    // Get all users (Admin)
+    // ✅ UPDATED: Get all users (returns List<User> directly for frontend)
     @GetMapping("/users")
-    public ResponseEntity<Map<String, Object>> getAllUsers() {
-        Map<String, Object> response = authService.getAllUsers();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<User>> getAllUsers() {
+        // Return list directly instead of wrapped in Map
+        List<User> users = userRepository.findAll();
+        return ResponseEntity.ok(users);
     }
     
     // Get user by ID

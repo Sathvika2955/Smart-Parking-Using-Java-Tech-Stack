@@ -54,7 +54,6 @@ public class ParkingService {
         }
     }
 
-    // ✅ UPDATED: Now accepts startTime and endTime as String parameters
     @Transactional
     public Map<String, Object> parkVehicle(
             String licensePlate,
@@ -115,6 +114,7 @@ public class ParkingService {
                 return response;
             }
 
+            // ✅ FIX: Refresh slot from database to avoid stale state
             Optional<ParkingSlot> slotOpt = slotRepository.findBySlotNumber(slotNumber);
 
             if (slotOpt.isEmpty()) {
@@ -124,11 +124,18 @@ public class ParkingService {
             }
 
             ParkingSlot slot = slotOpt.get();
-
+            
+            // ✅ FIX: Double-check slot availability to prevent race conditions
             if (slot.getIsOccupied() || !slot.getIsAvailable()) {
-                response.put("success", false);
-                response.put("message", "Slot #" + slotNumber + " is already occupied!");
-                return response;
+                System.out.println("Slot already occupied - refreshing from DB");
+                // Force refresh from database
+                slot = slotRepository.findById(slot.getId()).orElse(slot);
+                
+                if (slot.getIsOccupied() || !slot.getIsAvailable()) {
+                    response.put("success", false);
+                    response.put("message", "Slot #" + slotNumber + " is already occupied! Please select another slot.");
+                    return response;
+                }
             }
 
             System.out.println("Using slot: " + slot.getSlotNumber());
@@ -136,7 +143,6 @@ public class ParkingService {
             String bookingNumber = "BK" + System.currentTimeMillis();
             Booking booking = new Booking(vehicle, slot, bookingNumber);
             
-            // ✅ Parse and set start/end times
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
             if (startTimeStr != null && !startTimeStr.isEmpty()) {
                 try {
@@ -155,20 +161,23 @@ public class ParkingService {
                 }
             }
             
-            // ✅ Calculate amount immediately based on scheduled time
             if (booking.getStartTime() != null && booking.getEndTime() != null) {
                 Double calculatedAmount = booking.calculateTotalAmount();
                 booking.setTotalAmount(calculatedAmount);
                 System.out.println("Calculated amount: " + calculatedAmount);
             }
             
+            // ✅ FIX: Save booking first
             booking = bookingRepository.save(booking);
-
             System.out.println("Booking created: " + bookingNumber);
 
+            // ✅ FIX: Then update slot
             slot.occupy();
             slot.setCurrentBooking(booking);
-            slotRepository.save(slot);
+            slot = slotRepository.save(slot);
+            
+            // ✅ FIX: Force flush to database
+            slotRepository.flush();
 
             System.out.println("Slot occupied successfully");
 
@@ -243,7 +252,6 @@ public class ParkingService {
         return response;
     }
 
-    // ✅ NEW: Admin checkout booking
     @Transactional
     public Map<String, Object> checkoutBooking(Long bookingId) {
         Map<String, Object> response = new HashMap<>();
@@ -265,11 +273,9 @@ public class ParkingService {
                 return response;
             }
 
-            // Complete the booking
             booking.completeBooking();
             bookingRepository.save(booking);
 
-            // Free the slot
             ParkingSlot slot = booking.getParkingSlot();
             slot.vacate();
             slotRepository.save(slot);
@@ -337,6 +343,7 @@ public class ParkingService {
         return slotRepository.countByIsOccupied(true);
     }
 
+    // ✅ UPDATED: Now returns both active and completed bookings
     public Map<String, Object> generateReport() {
         Map<String, Object> report = new HashMap<>();
         report.put("totalSlots", TOTAL_SLOTS);
@@ -344,11 +351,13 @@ public class ParkingService {
         report.put("occupiedSlots", getOccupiedSlots());
 
         List<Booking> activeBookings = bookingRepository.findByStatus("ACTIVE");
+        List<Booking> completedBookings = bookingRepository.findByStatus("COMPLETED");
+        
         report.put("activeBookings", activeBookings);
+        report.put("completedBookings", completedBookings); // ✅ NEW
         report.put("totalActiveBookings", activeBookings.size());
 
-        double totalRevenue = bookingRepository.findByStatus("COMPLETED")
-                .stream()
+        double totalRevenue = completedBookings.stream()
                 .mapToDouble(b -> b.getTotalAmount() != null ? b.getTotalAmount() : 0)
                 .sum();
         report.put("totalRevenue", totalRevenue);

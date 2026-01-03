@@ -362,6 +362,90 @@
   }
 }
 
+/* ✅ Completed text styling */
+.completed-text {
+  color: #48bb78;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ✅ All Users Table Styles */
+.user-id {
+  font-family: 'Courier New', monospace;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.user-username {
+  font-family: 'Courier New', monospace;
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-email {
+  color: #4a5568;
+  font-size: 13px;
+}
+
+.user-phone {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.registered-date {
+  color: #718096;
+  font-size: 13px;
+}
+
+.vehicle-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ebf4ff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.vehicle-icon {
+  font-size: 14px;
+}
+
+.active-booking-badge {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-block;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Badge variants */
+.badge-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.badge-info {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
 /* Responsive adjustments for timer */
 @media (max-width: 1600px) {
   .table th:nth-child(1),

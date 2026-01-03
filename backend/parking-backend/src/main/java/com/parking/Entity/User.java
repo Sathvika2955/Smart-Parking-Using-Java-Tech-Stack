@@ -3,6 +3,7 @@ package com.parking.entity;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,7 +27,9 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
     
+    // ✅ SECURITY FIX: Password won't be included in JSON responses
     @Column(nullable = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     
     @Column(name = "full_name", nullable = false)
