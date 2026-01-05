@@ -37,7 +37,7 @@ public class ParkingSlot {
     @Column(name = "is_available", nullable = false)
     private Boolean isAvailable;
     
-    // ✅ NEW: GPS Coordinates
+    // GPS Coordinates
     @Column(name = "latitude")
     private Double latitude;
     
@@ -49,6 +49,13 @@ public class ParkingSlot {
     
     @Column(name = "address")
     private String address;
+    
+    // ✅ NEW: City and Region for multi-city support
+    @Column(name = "city")
+    private String city;
+    
+    @Column(name = "region")
+    private String region;
     
     @OneToOne
     @JoinColumn(name = "current_booking_id")
@@ -74,7 +81,7 @@ public class ParkingSlot {
         this.createdAt = LocalDateTime.now();
     }
     
-    // ✅ NEW: Constructor with location
+    // Constructor with location
     public ParkingSlot(Integer slotNumber, Integer floorNumber, String slotType, 
                       Double latitude, Double longitude, String locationName, String address) {
         this(slotNumber, floorNumber, slotType);
@@ -113,7 +120,7 @@ public class ParkingSlot {
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
     
-    // ✅ NEW: Location Getters/Setters
+    // Location Getters/Setters
     public Double getLatitude() { return latitude; }
     public void setLatitude(Double latitude) { this.latitude = latitude; }
     
@@ -125,6 +132,13 @@ public class ParkingSlot {
     
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    
+    // ✅ NEW: City and Region Getters/Setters
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    
+    public String getRegion() { return region; }
+    public void setRegion(String region) { this.region = region; }
     
     public Booking getCurrentBooking() { return currentBooking; }
     public void setCurrentBooking(Booking currentBooking) { 

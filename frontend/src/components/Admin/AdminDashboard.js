@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AllBookings from './AllBookings';
 import ManageSlots from './ManageSlots';
+import AddSlot from './AddSlot';
 import AllUsers from './AllUsers';
 import SearchVehicle from './SearchVehicle';
 import './Admin.css';
@@ -23,6 +24,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           <Route path="/" element={<Navigate to="/admin/all-bookings" />} />
           <Route path="/all-bookings" element={<AllBookings />} />
           <Route path="/manage-slots" element={<ManageSlots />} />
+          <Route path="/add-slot" element={<AddSlot />} />
           <Route path="/all-users" element={<AllUsers />} />
           <Route path="/search" element={<SearchVehicle />} />
         </Routes>

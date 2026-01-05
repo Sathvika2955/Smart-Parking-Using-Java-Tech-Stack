@@ -29,4 +29,10 @@ public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, Long> 
     long countByIsOccupied(Boolean isOccupied);
     
     List<ParkingSlot> findByIsOccupiedAndIsAvailable(Boolean isOccupied, Boolean isAvailable);
+    
+    // ✅ NEW: Find by city (for multi-city support)
+    List<ParkingSlot> findByCity(String city);
+    
+    // ✅ NEW: Check if slot number exists
+    boolean existsBySlotNumber(Integer slotNumber);
 }

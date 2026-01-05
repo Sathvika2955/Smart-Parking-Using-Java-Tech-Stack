@@ -1,11 +1,14 @@
 // API Configuration
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
-export const AUTH_API = `${API_BASE_URL}/auth`;
-export const PARKING_API = `${API_BASE_URL}/parking`;
+export const API_BASE_URL = 'http://localhost:8080/api';
+
+// ✅ API Endpoints - Just the paths, not full URLs
+export const AUTH_API = '/auth';
+export const PARKING_API = '/parking';
+export const SLOTS_API = '/slots';
 
 // Razorpay Configuration
-export const RAZORPAY_KEY = 'rzp_test_YOUR_KEY_HERE'; // Replace with your Razorpay key
-export const RAZORPAY_SECRET = 'YOUR_SECRET_HERE'; // Replace with your secret
+export const RAZORPAY_KEY = 'rzp_test_YOUR_KEY_HERE';
+export const RAZORPAY_SECRET = 'YOUR_SECRET_HERE';
 
 // Vehicle Types
 export const VEHICLE_TYPES = [
