@@ -36,6 +36,18 @@ public class ParkingSlot {
     
     @Column(name = "is_available", nullable = false)
     private Boolean isAvailable;
+
+    @Column(name = "is_under_maintenance", nullable = false)
+    private Boolean isUnderMaintenance;
+    
+    @Column(name = "maintenance_reason")
+    private String maintenanceReason;
+    
+    @Column(name = "maintenance_start_time")
+    private LocalDateTime maintenanceStartTime;
+    
+    @Column(name = "maintenance_end_time")
+    private LocalDateTime maintenanceEndTime;
     
     // GPS Coordinates
     @Column(name = "latitude")
@@ -72,6 +84,7 @@ private String country;
     public ParkingSlot() {
         this.isOccupied = false;
         this.isAvailable = true;
+        this.isUnderMaintenance = false;
         this.createdAt = LocalDateTime.now();
     }
     
@@ -81,6 +94,7 @@ private String country;
         this.slotType = slotType;
         this.isOccupied = false;
         this.isAvailable = true;
+        this.isUnderMaintenance = false;
         this.createdAt = LocalDateTime.now();
     }
     
@@ -103,6 +117,25 @@ private String country;
         this.isOccupied = false;
         this.currentBooking = null;
     }
+
+    public void startMaintenance(String reason) {
+        this.isUnderMaintenance = true;
+        this.maintenanceReason = reason;
+        this.maintenanceStartTime = LocalDateTime.now();
+        this.isAvailable = false;
+    }
+    
+    public void endMaintenance() {
+        this.isUnderMaintenance = false;
+        this.maintenanceReason = null;
+        this.maintenanceStartTime = null;
+        this.maintenanceEndTime = LocalDateTime.now();
+        this.isAvailable = true;
+    }
+    
+    public boolean isBookable() {
+        return isAvailable && !isOccupied && !isUnderMaintenance;
+    }
     
     // Getters and Setters
     public Long getId() { return id; }
@@ -122,6 +155,28 @@ private String country;
     
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
+
+
+    // ✅ NEW: Maintenance Getters/Setters
+    public Boolean getIsUnderMaintenance() { return isUnderMaintenance; }
+    public void setIsUnderMaintenance(Boolean isUnderMaintenance) { 
+        this.isUnderMaintenance = isUnderMaintenance; 
+    }
+    
+    public String getMaintenanceReason() { return maintenanceReason; }
+    public void setMaintenanceReason(String maintenanceReason) { 
+        this.maintenanceReason = maintenanceReason; 
+    }
+    
+    public LocalDateTime getMaintenanceStartTime() { return maintenanceStartTime; }
+    public void setMaintenanceStartTime(LocalDateTime maintenanceStartTime) { 
+        this.maintenanceStartTime = maintenanceStartTime; 
+    }
+    
+    public LocalDateTime getMaintenanceEndTime() { return maintenanceEndTime; }
+    public void setMaintenanceEndTime(LocalDateTime maintenanceEndTime) { 
+        this.maintenanceEndTime = maintenanceEndTime; 
+    }
     
     // Location Getters/Setters
     public Double getLatitude() { return latitude; }

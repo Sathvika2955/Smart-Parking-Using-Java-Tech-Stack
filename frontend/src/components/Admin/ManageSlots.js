@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaParking, FaToggleOn, FaToggleOff, FaCar, FaPlus, FaEdit, FaTrash, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaParking, FaToggleOn, FaToggleOff, FaCar, FaPlus, FaEdit, FaTrash, FaMapMarkerAlt, FaTools } from 'react-icons/fa';
 import api from '../../services/api';
 import { PARKING_API } from '../../utils/constants';
 import Notification from '../Common/Notification';
@@ -9,7 +9,7 @@ import './Admin.css';
 const ManageSlots = () => {
   const navigate = useNavigate();
   const [slots, setSlots] = useState([]);
-  const [stats, setStats] = useState({ total: 0, available: 0, occupied: 0, unavailable: 0 });
+  const [stats, setStats] = useState({ total: 0, available: 0, occupied: 0, unavailable: 0, maintenance: 0 });
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [editingSlot, setEditingSlot] = useState(null);
@@ -30,15 +30,17 @@ const ManageSlots = () => {
       const response = await api.get(`${PARKING_API}/slots`);
       setSlots(response.data);
       
-      const available = response.data.filter(s => !s.isOccupied && s.isAvailable).length;
+      const available = response.data.filter(s => !s.isOccupied && s.isAvailable && !s.isUnderMaintenance).length;
       const occupied = response.data.filter(s => s.isOccupied).length;
       const unavailable = response.data.filter(s => !s.isAvailable).length;
+      const maintenance = response.data.filter(s => s.isUnderMaintenance).length;
       
       setStats({
         total: response.data.length,
         available,
         occupied,
-        unavailable
+        unavailable,
+        maintenance
       });
     } catch (error) {
       showNotification('Failed to fetch slots', 'error');
@@ -76,6 +78,34 @@ const ManageSlots = () => {
       }
     } catch (error) {
       showNotification('Failed to toggle availability', 'error');
+    }
+  };
+
+  // ✅ NEW: Toggle maintenance function
+  const handleToggleMaintenance = async (slotId, isUnderMaintenance) => {
+    let reason = null;
+    
+    if (!isUnderMaintenance) {
+      // Starting maintenance - ask for reason
+      reason = window.prompt('Enter maintenance reason:', 'Routine maintenance');
+      if (reason === null) return; // User clicked cancel
+      if (reason.trim() === '') reason = 'Routine maintenance';
+    }
+
+    try {
+      const response = await api.put(`/slots/toggle-maintenance/${slotId}`, 
+        reason ? { reason } : {}
+      );
+      
+      if (response.data.success) {
+        showNotification(response.data.message, 'success');
+        fetchSlots();
+      } else {
+        showNotification(response.data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Toggle maintenance error:', error);
+      showNotification('Failed to toggle maintenance', 'error');
     }
   };
 
@@ -262,13 +292,14 @@ const ManageSlots = () => {
           </div>
         </div>
 
+        {/* ✅ NEW: Maintenance stat card */}
         <div className="stat-card">
           <div className="stat-icon warning">
-            <FaToggleOff />
+            <FaTools />
           </div>
           <div className="stat-content">
-            <div className="stat-label">Disabled</div>
-            <div className="stat-value">{stats.unavailable}</div>
+            <div className="stat-label">Under Maintenance</div>
+            <div className="stat-value">{stats.maintenance}</div>
           </div>
         </div>
       </div>
@@ -369,7 +400,7 @@ const ManageSlots = () => {
             </thead>
             <tbody>
               {getFilteredSlots().map((slot) => (
-                <tr key={slot.id}>
+                <tr key={slot.id} className={slot.isUnderMaintenance ? 'maintenance-row' : ''}>
                   <td>
                     <span className="slot-badge">#{slot.slotNumber}</span>
                   </td>
@@ -389,6 +420,21 @@ const ManageSlots = () => {
                         📍 {slot.city}, {slot.region}
                       </div>
                     )}
+                    {/* ✅ NEW: Show maintenance reason */}
+                    {slot.isUnderMaintenance && slot.maintenanceReason && (
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#f59e0b', 
+                        marginTop: '4px', 
+                        fontWeight: '600',
+                        background: '#fffbeb',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        display: 'inline-block'
+                      }}>
+                        🔧 {slot.maintenanceReason}
+                      </div>
+                    )}
                   </td>
                   <td>
                     {slot.latitude && slot.longitude ? (
@@ -401,9 +447,16 @@ const ManageSlots = () => {
                     )}
                   </td>
                   <td>
-                    <span className={`badge badge-${slot.isOccupied ? 'danger' : 'success'}`}>
-                      {slot.isOccupied ? 'OCCUPIED' : 'FREE'}
-                    </span>
+                    {/* ✅ NEW: Show maintenance status */}
+                    {slot.isUnderMaintenance ? (
+                      <span className="badge badge-warning">
+                        🔧 MAINTENANCE
+                      </span>
+                    ) : (
+                      <span className={`badge badge-${slot.isOccupied ? 'danger' : 'success'}`}>
+                        {slot.isOccupied ? 'OCCUPIED' : 'FREE'}
+                      </span>
+                    )}
                   </td>
                   <td>
                     <button
@@ -418,6 +471,23 @@ const ManageSlots = () => {
                   </td>
                   <td>
                     <div className="action-buttons">
+                      {/* ✅ NEW: Maintenance Toggle Button */}
+                      <button
+                        className={`btn ${slot.isUnderMaintenance ? 'btn-warning' : 'btn-secondary'} btn-sm`}
+                        onClick={() => handleToggleMaintenance(slot.id, slot.isUnderMaintenance)}
+                        disabled={slot.isOccupied && !slot.isUnderMaintenance}
+                        title={
+                          slot.isOccupied && !slot.isUnderMaintenance
+                            ? 'Cannot put occupied slot under maintenance'
+                            : slot.isUnderMaintenance
+                            ? 'End maintenance'
+                            : 'Start maintenance'
+                        }
+                      >
+                        <FaTools />
+                        {slot.isUnderMaintenance ? ' End' : ' Maintain'}
+                      </button>
+                      
                       <button
                         className="btn btn-primary btn-sm"
                         onClick={() => handleEditSlot(slot)}
@@ -426,6 +496,7 @@ const ManageSlots = () => {
                       >
                         <FaEdit /> Edit
                       </button>
+                      
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDeleteSlot(slot.id, slot.slotNumber)}

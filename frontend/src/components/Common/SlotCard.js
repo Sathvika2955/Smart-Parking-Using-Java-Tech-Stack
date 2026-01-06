@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaCar, FaMotorcycle, FaTruck } from 'react-icons/fa';
+import { FaCar, FaMotorcycle, FaTruck, FaTools } from 'react-icons/fa';
 import './Common.css';
 
 const SlotCard = ({ slot, onSelect, selected }) => {
@@ -18,13 +18,18 @@ const SlotCard = ({ slot, onSelect, selected }) => {
 
   const getSlotClass = () => {
     let className = 'slot-card';
-    if (slot.isOccupied) {
+    
+    // ✅ NEW: Maintenance status check
+    if (slot.isUnderMaintenance) {
+      className += ' slot-maintenance';
+    } else if (slot.isOccupied) {
       className += ' slot-occupied';
     } else if (!slot.isAvailable) {
       className += ' slot-unavailable';
     } else {
       className += ' slot-available';
     }
+    
     if (selected) {
       className += ' slot-selected';
     }
@@ -32,7 +37,8 @@ const SlotCard = ({ slot, onSelect, selected }) => {
   };
 
   const handleClick = () => {
-    if (!slot.isOccupied && slot.isAvailable && onSelect) {
+    // ✅ NEW: Prevent clicking maintenance slots
+    if (!slot.isOccupied && slot.isAvailable && !slot.isUnderMaintenance && onSelect) {
       onSelect(slot);
     }
   };
@@ -40,8 +46,28 @@ const SlotCard = ({ slot, onSelect, selected }) => {
   return (
     <div className={getSlotClass()} onClick={handleClick}>
       <div className="slot-number">#{slot.slotNumber}</div>
-      <div className="slot-icon">{getVehicleIcon()}</div>
+      
+      {/* ✅ NEW: Show maintenance icon */}
+      {slot.isUnderMaintenance ? (
+        <div className="slot-icon maintenance-icon">
+          <FaTools />
+        </div>
+      ) : (
+        <div className="slot-icon">{getVehicleIcon()}</div>
+      )}
+      
       <div className="slot-type">{slot.slotType}</div>
+      
+      {/* ✅ NEW: Show maintenance info */}
+      {slot.isUnderMaintenance && (
+        <div className="slot-maintenance-info">
+          <div className="maintenance-badge">UNDER MAINTENANCE</div>
+          {slot.maintenanceReason && (
+            <div className="maintenance-reason">{slot.maintenanceReason}</div>
+          )}
+        </div>
+      )}
+      
       {slot.isOccupied && slot.currentBooking && (
         <div className="slot-vehicle-info">
           <div className="slot-vehicle-number">
@@ -49,9 +75,11 @@ const SlotCard = ({ slot, onSelect, selected }) => {
           </div>
         </div>
       )}
-      {!slot.isOccupied && slot.isAvailable && (
+      
+      {!slot.isOccupied && slot.isAvailable && !slot.isUnderMaintenance && (
         <div className="slot-status">AVAILABLE</div>
       )}
+      
       {selected && <div className="slot-selected-badge">SELECTED</div>}
     </div>
   );

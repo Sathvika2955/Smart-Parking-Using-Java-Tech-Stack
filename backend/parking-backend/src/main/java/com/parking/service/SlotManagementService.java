@@ -262,4 +262,51 @@ newSlot.setIsOccupied(false);
 
         return response;
     }
+    // ✅ NEW: Toggle maintenance mode
+@Transactional
+public Map<String, Object> toggleMaintenance(Long id, Map<String, String> data) {
+    Map<String, Object> response = new HashMap<>();
+    
+    try {
+        Optional<ParkingSlot> slotOpt = slotRepository.findById(id);
+        
+        if (slotOpt.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Slot not found!");
+            return response;
+        }
+
+        ParkingSlot slot = slotOpt.get();
+
+        // Cannot put occupied slot under maintenance
+        if (slot.getIsOccupied() && !slot.getIsUnderMaintenance()) {
+            response.put("success", false);
+            response.put("message", "Cannot put occupied slot under maintenance!");
+            return response;
+        }
+
+        if (slot.getIsUnderMaintenance()) {
+            // End maintenance
+            slot.endMaintenance();
+            response.put("message", "Maintenance ended! Slot is now available.");
+        } else {
+            // Start maintenance
+            String reason = data != null ? data.get("reason") : "Routine maintenance";
+            slot.startMaintenance(reason);
+            response.put("message", "Slot marked as under maintenance!");
+        }
+
+        ParkingSlot updatedSlot = slotRepository.save(slot);
+
+        response.put("success", true);
+        response.put("slot", updatedSlot);
+
+    } catch (Exception e) {
+        response.put("success", false);
+        response.put("message", "Failed to toggle maintenance: " + e.getMessage());
+        e.printStackTrace();
+    }
+
+    return response;
+}
 }

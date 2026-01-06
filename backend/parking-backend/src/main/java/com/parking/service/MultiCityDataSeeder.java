@@ -3,6 +3,7 @@ package com.parking.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -156,6 +157,54 @@ public class MultiCityDataSeeder implements CommandLineRunner {
         
         System.out.println("✅ Successfully seeded " + allSlots.size() + " parking slots across 7 cities!");
         System.out.println("📍 Cities: Mumbai, Delhi, Bangalore, Hyderabad, Chennai, Pune, Kakinada");
+         // ✅ NEW: Mark some random slots as under maintenance for demo
+        System.out.println("\n🔧 Adding maintenance demo slots...");
+        markRandomSlotsForMaintenance();
+    }
+    
+    // ✅ NEW: Method to mark random slots as under maintenance
+    private void markRandomSlotsForMaintenance() {
+        try {
+            List<ParkingSlot> allSlots = slotRepository.findAll();
+            
+            if (allSlots.size() < 10) {
+                System.out.println("⚠️ Not enough slots to mark for maintenance");
+                return;
+            }
+            
+            Random random = new Random();
+            int maintenanceCount = Math.min(5, allSlots.size() / 10); // 10% of slots or max 5
+            
+            String[] maintenanceReasons = {
+                "Routine inspection and cleaning",
+                "Sensor calibration in progress",
+                "Painting and line marking",
+                "Lighting system upgrade",
+                "Surface repair work"
+            };
+            
+            int marked = 0;
+            for (int i = 0; i < maintenanceCount * 3 && marked < maintenanceCount; i++) {
+                int randomIndex = random.nextInt(allSlots.size());
+                ParkingSlot slot = allSlots.get(randomIndex);
+                
+                if (!slot.getIsOccupied() && !slot.getIsUnderMaintenance()) {
+                    String reason = maintenanceReasons[random.nextInt(maintenanceReasons.length)];
+                    slot.startMaintenance(reason);
+                    slotRepository.save(slot);
+                    
+                    System.out.println("🔧 Slot #" + slot.getSlotNumber() + 
+                                     " (" + slot.getCity() + ") marked as under maintenance: " + reason);
+                    marked++;
+                }
+            }
+            
+            System.out.println("✅ Marked " + marked + " slots as under maintenance for demo");
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error marking slots for maintenance: " + e.getMessage());
+        }
+    
     }
     
     private List<ParkingSlot> createSlots(int startNumber, String city, String region,

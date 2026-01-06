@@ -109,6 +109,13 @@ public class ParkingService {
             }
 
             ParkingSlot slot = slotOpt.get();
+
+            //Check maintenance status
+    if (slot.getIsUnderMaintenance()) {
+        response.put("success", false);
+        response.put("message", "Slot #" + slotNumber + " is under maintenance! Reason: " + slot.getMaintenanceReason());
+        return response;
+    }
             
             if (slot.getIsOccupied() || !slot.getIsAvailable()) {
                 System.out.println("Slot already occupied - refreshing from DB");

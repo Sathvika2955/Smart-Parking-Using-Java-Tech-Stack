@@ -151,4 +151,34 @@ public class SlotController {
         
         return ResponseEntity.ok(response);
     }
+
+    // ✅ NEW: Toggle maintenance mode
+@PutMapping("/toggle-maintenance/{id}")
+public ResponseEntity<Map<String, Object>> toggleMaintenance(
+        @PathVariable Long id,
+        @RequestBody(required = false) Map<String, String> data) {
+    Map<String, Object> response = slotService.toggleMaintenance(id, data);
+    return ResponseEntity.ok(response);
+}
+
+// ✅ NEW: Get all maintenance slots
+@GetMapping("/maintenance")
+public ResponseEntity<Map<String, Object>> getMaintenanceSlots() {
+    Map<String, Object> response = new HashMap<>();
+    
+    try {
+        List<ParkingSlot> maintenanceSlots = slotRepository.findAll().stream()
+            .filter(ParkingSlot::getIsUnderMaintenance)
+            .toList();
+        
+        response.put("success", true);
+        response.put("slots", maintenanceSlots);
+        response.put("count", maintenanceSlots.size());
+    } catch (Exception e) {
+        response.put("success", false);
+        response.put("message", "Error fetching maintenance slots: " + e.getMessage());
+    }
+    
+    return ResponseEntity.ok(response);
+}
 }
