@@ -14,9 +14,12 @@ const ManageSlots = () => {
   const [notification, setNotification] = useState(null);
   const [editingSlot, setEditingSlot] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [cities, setCities] = useState([]);
+  const [selectedCity, setSelectedCity] = useState('ALL');
 
   useEffect(() => {
     fetchSlots();
+    fetchCities();
     const interval = setInterval(fetchSlots, 5000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -42,6 +45,24 @@ const ManageSlots = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCities = async () => {
+    try {
+      const response = await api.get('/slots/cities');
+      if (response.data.success) {
+        setCities(response.data.cities);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cities:', error);
+    }
+  };
+
+  const getFilteredSlots = () => {
+    if (selectedCity === 'ALL') {
+      return slots;
+    }
+    return slots.filter(slot => slot.city === selectedCity);
   };
 
   const handleToggleAvailability = async (slotId, currentStatus) => {
@@ -252,9 +273,84 @@ const ManageSlots = () => {
         </div>
       </div>
 
+      {/* City Quick Filter Badges */}
+      {cities.length > 0 && (
+        <div className="card" style={{ marginBottom: '20px' }}>
+          <div style={{ padding: '16px' }}>
+            <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#2d3748' }}>
+              Quick City Filter
+            </h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              <button
+                onClick={() => setSelectedCity('ALL')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: selectedCity === 'ALL' ? '2px solid #667eea' : '2px solid #e2e8f0',
+                  background: selectedCity === 'ALL' ? '#667eea' : 'white',
+                  color: selectedCity === 'ALL' ? 'white' : '#4a5568',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                All Cities ({slots.length})
+              </button>
+              {cities.map(city => {
+                const cityCount = slots.filter(s => s.city === city).length;
+                const isSelected = selectedCity === city;
+                return (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedCity(city)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      border: isSelected ? '2px solid #667eea' : '2px solid #e2e8f0',
+                      background: isSelected ? '#667eea' : 'white',
+                      color: isSelected ? 'white' : '#4a5568',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s'
+                    }}
+                  >
+                    📍 {city} ({cityCount})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">All Parking Slots</h3>
+          
+          {/* City Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: '#4a5568' }}>
+              Filter by City:
+            </label>
+            <select
+              className="form-select"
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              style={{ width: '200px', padding: '8px 12px' }}
+            >
+              <option value="ALL">All Cities ({slots.length})</option>
+              {cities.map(city => {
+                const cityCount = slots.filter(s => s.city === city).length;
+                return (
+                  <option key={city} value={city}>
+                    {city} ({cityCount})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
 
         <div className="table-container">
@@ -272,7 +368,7 @@ const ManageSlots = () => {
               </tr>
             </thead>
             <tbody>
-              {slots.map((slot) => (
+              {getFilteredSlots().map((slot) => (
                 <tr key={slot.id}>
                   <td>
                     <span className="slot-badge">#{slot.slotNumber}</span>
@@ -286,6 +382,11 @@ const ManageSlots = () => {
                     {slot.address && (
                       <div style={{ fontSize: '12px', color: '#718096', marginTop: '2px' }}>
                         {slot.address}
+                      </div>
+                    )}
+                    {slot.city && (
+                      <div style={{ fontSize: '11px', color: '#667eea', marginTop: '2px', fontWeight: '600' }}>
+                        📍 {slot.city}, {slot.region}
                       </div>
                     )}
                   </td>
@@ -340,10 +441,12 @@ const ManageSlots = () => {
             </tbody>
           </table>
 
-          {slots.length === 0 && (
+          {getFilteredSlots().length === 0 && (
             <div className="empty-state">
               <div className="empty-state-icon"><FaParking /></div>
-              <div className="empty-state-text">No slots found</div>
+              <div className="empty-state-text">
+                {selectedCity === 'ALL' ? 'No slots found' : `No slots in ${selectedCity}`}
+              </div>
               <button 
                 className="btn btn-primary"
                 onClick={() => navigate('/admin/add-slot')}
