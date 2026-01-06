@@ -109,4 +109,46 @@ public class SlotController {
         
         return ResponseEntity.ok(response);
     }
+    // ✅ NEW: Get slots by city
+    @GetMapping("/by-city/{city}")
+    public ResponseEntity<Map<String, Object>> getSlotsByCity(@PathVariable String city) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<ParkingSlot> citySlots = slotRepository.findByCity(city);
+            response.put("success", true);
+            response.put("city", city);
+            response.put("slots", citySlots);
+            response.put("count", citySlots.size());
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error fetching slots for city: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    // ✅ NEW: Get all available cities
+    @GetMapping("/cities")
+    public ResponseEntity<Map<String, Object>> getAllCities() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<String> cities = slotRepository.findAll().stream()
+                .map(ParkingSlot::getCity)
+                .filter(city -> city != null && !city.isEmpty())
+                .distinct()
+                .sorted()
+                .toList();
+            
+            response.put("success", true);
+            response.put("cities", cities);
+            response.put("count", cities.size());
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error fetching cities: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(response);
+    }
 }

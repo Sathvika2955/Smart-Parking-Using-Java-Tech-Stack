@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,6 @@ import com.parking.repository.ParkingSlotRepository;
 import com.parking.repository.UserRepository;
 import com.parking.repository.VehicleRepository;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -40,69 +38,7 @@ public class ParkingService {
 
     private static final int TOTAL_SLOTS = 20;
 
-    @PostConstruct
-    public void initializeSlots() {
-        if (slotRepository.count() == 0) {
-            Random random = new Random();
-            
-            // Sample locations around Kakinada
-            double[][] locations = {
-                {16.9891, 82.2475}, // Main area
-                {16.9850, 82.2450}, // Beach road
-                {16.9920, 82.2500}  // Railway station
-            };
-            
-            String[] locationNames = {
-                "Kakinada Main Parking",
-                "Beach Road Parking",
-                "Railway Station Parking"
-            };
-            
-            // Slots 1-10: SMALL
-            for (int i = 1; i <= 10; i++) {
-                int locIndex = random.nextInt(locations.length);
-                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
-                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
-                
-                ParkingSlot slot = new ParkingSlot(i, 1, "SMALL");
-                slot.setLatitude(lat);
-                slot.setLongitude(lon);
-                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
-                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
-                slotRepository.save(slot);
-            }
-            
-            // Slots 11-17: MEDIUM
-            for (int i = 11; i <= 17; i++) {
-                int locIndex = random.nextInt(locations.length);
-                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
-                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
-                
-                ParkingSlot slot = new ParkingSlot(i, 1, "MEDIUM");
-                slot.setLatitude(lat);
-                slot.setLongitude(lon);
-                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
-                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
-                slotRepository.save(slot);
-            }
-            
-            // Slots 18-20: LARGE
-            for (int i = 18; i <= 20; i++) {
-                int locIndex = random.nextInt(locations.length);
-                double lat = locations[locIndex][0] + (random.nextDouble() - 0.5) * 0.001;
-                double lon = locations[locIndex][1] + (random.nextDouble() - 0.5) * 0.001;
-                
-                ParkingSlot slot = new ParkingSlot(i, 1, "LARGE");
-                slot.setLatitude(lat);
-                slot.setLongitude(lon);
-                slot.setLocationName(locationNames[locIndex] + " - Slot " + i);
-                slot.setAddress("Near " + locationNames[locIndex] + ", Kakinada, AP");
-                slotRepository.save(slot);
-            }
-            
-            System.out.println("✅ Initialized " + TOTAL_SLOTS + " parking slots with GPS coordinates");
-        }
-    }
+
 
     @Transactional
     public Map<String, Object> parkVehicle(

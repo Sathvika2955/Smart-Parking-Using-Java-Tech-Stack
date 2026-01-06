@@ -5,6 +5,7 @@ com\parking\controller\AuthController.class
 com\parking\entity\ParkingSlot.class
 com\parking\ParkingApplication.class
 com\parking\repository\VehicleRepository.class
+com\parking\service\MultiCityDataSeeder.class
 com\parking\controller\SlotController.class
 com\parking\repository\UserRepository.class
 com\parking\service\ParkingService.class

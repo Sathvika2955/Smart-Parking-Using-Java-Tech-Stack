@@ -46,6 +46,8 @@ public class SlotManagementService {
                 ? slotData.get("city").toString() : null;
             String region = slotData.containsKey("region") 
                 ? slotData.get("region").toString() : null;
+            String country = slotData.containsKey("country") 
+    ? slotData.get("country").toString() : "India";
 
             // Check if slot number already exists
             Optional<ParkingSlot> existingSlot = slotRepository.findBySlotNumber(slotNumber);
@@ -63,8 +65,11 @@ public class SlotManagementService {
             newSlot.setLatitude(latitude);
             newSlot.setLongitude(longitude);
             newSlot.setLocationName(locationName);
-            newSlot.setAddress(address);
-            newSlot.setIsOccupied(false);
+           newSlot.setAddress(address);
+newSlot.setCity(city);
+newSlot.setRegion(region);
+newSlot.setCountry(country);
+newSlot.setIsOccupied(false);
             newSlot.setIsAvailable(true);
             newSlot.setCreatedAt(LocalDateTime.now());
 

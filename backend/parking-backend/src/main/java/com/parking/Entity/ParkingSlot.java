@@ -56,6 +56,9 @@ public class ParkingSlot {
     
     @Column(name = "region")
     private String region;
+
+    @Column(name = "country")
+private String country;
     
     @OneToOne
     @JoinColumn(name = "current_booking_id")
@@ -139,6 +142,9 @@ public class ParkingSlot {
     
     public String getRegion() { return region; }
     public void setRegion(String region) { this.region = region; }
+
+    public String getCountry() { return country; }
+public void setCountry(String country) { this.country = country; }
     
     public Booking getCurrentBooking() { return currentBooking; }
     public void setCurrentBooking(Booking currentBooking) { 
