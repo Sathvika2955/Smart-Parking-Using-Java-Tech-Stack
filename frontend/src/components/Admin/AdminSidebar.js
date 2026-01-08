@@ -1,6 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaClipboardList, FaParking, FaUsers, FaSearch, FaSignOutAlt, FaBars, FaTimes, FaShieldAlt } from 'react-icons/fa';
+import { 
+  FaClipboardList, 
+  FaParking, 
+  FaUsers, 
+  FaSearch, 
+  FaSignOutAlt, 
+  FaBars, 
+  FaTimes, 
+  FaShieldAlt,
+  FaChartBar  // ✅ ADD THIS
+} from 'react-icons/fa';
 import './Admin.css';
 
 const AdminSidebar = ({ user, isOpen, onToggle, onLogout }) => {
@@ -28,26 +38,35 @@ const AdminSidebar = ({ user, isOpen, onToggle, onLogout }) => {
             </div>
           )}
         </div>
-
+        
         <nav className="sidebar-nav">
           <NavLink to="/admin/all-bookings" className="sidebar-link">
             <FaClipboardList />
             {isOpen && <span>All Bookings</span>}
           </NavLink>
+          
           <NavLink to="/admin/manage-slots" className="sidebar-link">
             <FaParking />
             {isOpen && <span>Manage Slots</span>}
           </NavLink>
+          
           <NavLink to="/admin/all-users" className="sidebar-link">
             <FaUsers />
             {isOpen && <span>All Users</span>}
           </NavLink>
+          
           <NavLink to="/admin/search" className="sidebar-link">
             <FaSearch />
             {isOpen && <span>Search Vehicle</span>}
           </NavLink>
+          
+          {/* ✅ ADD THIS - Monthly Reports Link */}
+          <NavLink to="/admin/reports" className="sidebar-link">
+            <FaChartBar />
+            {isOpen && <span>Monthly Reports</span>}
+          </NavLink>
         </nav>
-
+        
         <div className="sidebar-footer">
           <button className="sidebar-link logout-btn" onClick={onLogout}>
             <FaSignOutAlt />

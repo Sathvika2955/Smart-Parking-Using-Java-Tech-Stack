@@ -37,7 +37,7 @@ public class ParkingController {
         ));
     }
 
-    // ✅ NEW: Find nearby parking slots
+    //  Find nearby parking slots
     @GetMapping("/nearby")
     public ResponseEntity<Map<String, Object>> findNearbySlots(
             @RequestParam Double latitude,

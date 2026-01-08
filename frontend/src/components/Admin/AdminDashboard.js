@@ -6,6 +6,7 @@ import ManageSlots from './ManageSlots';
 import AddSlot from './AddSlot';
 import AllUsers from './AllUsers';
 import SearchVehicle from './SearchVehicle';
+import MonthlyReports from './MonthlyReports';
 import './Admin.css';
 
 const AdminDashboard = ({ user, onLogout }) => {
@@ -27,6 +28,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           <Route path="/add-slot" element={<AddSlot />} />
           <Route path="/all-users" element={<AllUsers />} />
           <Route path="/search" element={<SearchVehicle />} />
+          <Route path="/reports" element={<MonthlyReports />} />
         </Routes>
       </div>
     </div>

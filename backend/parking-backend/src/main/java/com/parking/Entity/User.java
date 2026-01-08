@@ -27,7 +27,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
     
-    // ✅ SECURITY FIX: Password won't be included in JSON responses
+    //SECURITY FIX: Password won't be included in JSON responses
     @Column(nullable = false)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;

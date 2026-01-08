@@ -15,7 +15,7 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, Long> {
     
-    // ✅ Pessimistic lock to prevent race conditions
+    // Pessimistic lock to prevent race conditions
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ps FROM ParkingSlot ps WHERE ps.slotNumber = :slotNumber")
     Optional<ParkingSlot> findBySlotNumberWithLock(Integer slotNumber);
@@ -30,9 +30,9 @@ public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, Long> 
     
     List<ParkingSlot> findByIsOccupiedAndIsAvailable(Boolean isOccupied, Boolean isAvailable);
     
-    // ✅ NEW: Find by city (for multi-city support)
+    // Find by city (for multi-city support)
     List<ParkingSlot> findByCity(String city);
     
-    // ✅ NEW: Check if slot number exists
+    // Check if slot number exists
     boolean existsBySlotNumber(Integer slotNumber);
 }

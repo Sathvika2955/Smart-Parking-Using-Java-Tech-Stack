@@ -1,5 +1,7 @@
 com\parking\entity\Booking.class
 com\parking\controller\ParkingController.class
+com\parking\service\ReportService.class
+com\parking\controller\ReportController.class
 com\parking\entity\Vehicle.class
 com\parking\controller\AuthController.class
 com\parking\entity\ParkingSlot.class
@@ -9,6 +11,7 @@ com\parking\service\MultiCityDataSeeder.class
 com\parking\controller\SlotController.class
 com\parking\repository\UserRepository.class
 com\parking\service\ParkingService.class
+com\parking\service\ExportService.class
 com\parking\entity\User.class
 com\parking\service\SlotManagementService.class
 com\parking\repository\BookingRepository.class

@@ -47,7 +47,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
     
-    // ✅ UPDATED: Get all users (returns List<User> directly for frontend)
+    // UPDATED: Get all users (returns List<User> directly for frontend)
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
         // Return list directly instead of wrapped in Map

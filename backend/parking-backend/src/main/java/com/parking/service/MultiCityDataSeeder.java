@@ -157,12 +157,12 @@ public class MultiCityDataSeeder implements CommandLineRunner {
         
         System.out.println("✅ Successfully seeded " + allSlots.size() + " parking slots across 7 cities!");
         System.out.println("📍 Cities: Mumbai, Delhi, Bangalore, Hyderabad, Chennai, Pune, Kakinada");
-         // ✅ NEW: Mark some random slots as under maintenance for demo
+         //Mark some random slots as under maintenance
         System.out.println("\n🔧 Adding maintenance demo slots...");
         markRandomSlotsForMaintenance();
     }
     
-    // ✅ NEW: Method to mark random slots as under maintenance
+    //  Method to mark random slots as under maintenance
     private void markRandomSlotsForMaintenance() {
         try {
             List<ParkingSlot> allSlots = slotRepository.findAll();

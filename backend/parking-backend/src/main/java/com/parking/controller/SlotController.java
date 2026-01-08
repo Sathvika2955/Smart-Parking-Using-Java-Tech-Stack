@@ -109,7 +109,7 @@ public class SlotController {
         
         return ResponseEntity.ok(response);
     }
-    // ✅ NEW: Get slots by city
+    // Get slots by city
     @GetMapping("/by-city/{city}")
     public ResponseEntity<Map<String, Object>> getSlotsByCity(@PathVariable String city) {
         Map<String, Object> response = new HashMap<>();
@@ -128,7 +128,7 @@ public class SlotController {
         return ResponseEntity.ok(response);
     }
     
-    // ✅ NEW: Get all available cities
+    //  Get all available cities
     @GetMapping("/cities")
     public ResponseEntity<Map<String, Object>> getAllCities() {
         Map<String, Object> response = new HashMap<>();
@@ -152,7 +152,7 @@ public class SlotController {
         return ResponseEntity.ok(response);
     }
 
-    // ✅ NEW: Toggle maintenance mode
+    // Toggle maintenance mode
 @PutMapping("/toggle-maintenance/{id}")
 public ResponseEntity<Map<String, Object>> toggleMaintenance(
         @PathVariable Long id,
@@ -161,7 +161,7 @@ public ResponseEntity<Map<String, Object>> toggleMaintenance(
     return ResponseEntity.ok(response);
 }
 
-// ✅ NEW: Get all maintenance slots
+//  Get all maintenance slots
 @GetMapping("/maintenance")
 public ResponseEntity<Map<String, Object>> getMaintenanceSlots() {
     Map<String, Object> response = new HashMap<>();

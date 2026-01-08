@@ -10,6 +10,8 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.parking.entity.Booking;
 import com.parking.entity.ParkingSlot;
@@ -18,8 +20,6 @@ import com.parking.repository.BookingRepository;
 import com.parking.repository.ParkingSlotRepository;
 import com.parking.repository.UserRepository;
 import com.parking.repository.VehicleRepository;
-
-import jakarta.transaction.Transactional;
 
 @Service
 public class ParkingService {
@@ -38,9 +38,10 @@ public class ParkingService {
 
     private static final int TOTAL_SLOTS = 20;
 
-
-
-    @Transactional
+    /**
+     * ✅ FIXED: Park vehicle with pessimistic locking to prevent race conditions
+     */
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Map<String, Object> parkVehicle(
             String licensePlate,
             String vehicleType,
@@ -65,6 +66,7 @@ public class ParkingService {
             final String normalizedLicensePlate = licensePlate.toUpperCase();
             final String normalizedVehicleType = vehicleType.toUpperCase();
 
+            // Get or create vehicle
             Vehicle vehicle = vehicleRepository
                     .findByLicensePlate(normalizedLicensePlate)
                     .orElseGet(() -> {
@@ -83,6 +85,7 @@ public class ParkingService {
 
             System.out.println("Vehicle ID: " + vehicle.getId());
 
+            // Check if vehicle is already parked
             List<Booking> activeBookings = bookingRepository.findByVehicleId(vehicle.getId());
             boolean alreadyParked = activeBookings.stream()
                     .anyMatch(b -> "ACTIVE".equals(b.getStatus()));
@@ -100,7 +103,8 @@ public class ParkingService {
                 return response;
             }
 
-            Optional<ParkingSlot> slotOpt = slotRepository.findBySlotNumber(slotNumber);
+            // ✅ CRITICAL FIX: Use pessimistic write lock to prevent concurrent bookings
+            Optional<ParkingSlot> slotOpt = slotRepository.findBySlotNumberWithLock(slotNumber);
 
             if (slotOpt.isEmpty()) {
                 response.put("success", false);
@@ -110,29 +114,28 @@ public class ParkingService {
 
             ParkingSlot slot = slotOpt.get();
 
-            //Check maintenance status
-    if (slot.getIsUnderMaintenance()) {
-        response.put("success", false);
-        response.put("message", "Slot #" + slotNumber + " is under maintenance! Reason: " + slot.getMaintenanceReason());
-        return response;
-    }
+            // ✅ Check maintenance status
+            if (slot.getIsUnderMaintenance()) {
+                response.put("success", false);
+                response.put("message", "Slot #" + slotNumber + " is under maintenance! Reason: " + slot.getMaintenanceReason());
+                return response;
+            }
             
+            // ✅ CRITICAL: Re-check availability after acquiring lock
             if (slot.getIsOccupied() || !slot.getIsAvailable()) {
-                System.out.println("Slot already occupied - refreshing from DB");
-                slot = slotRepository.findById(slot.getId()).orElse(slot);
-                
-                if (slot.getIsOccupied() || !slot.getIsAvailable()) {
-                    response.put("success", false);
-                    response.put("message", "Slot #" + slotNumber + " is already occupied! Please select another slot.");
-                    return response;
-                }
+                System.out.println("Slot #" + slotNumber + " is no longer available after lock acquisition");
+                response.put("success", false);
+                response.put("message", "Slot #" + slotNumber + " is already occupied! Please select another slot.");
+                return response;
             }
 
             System.out.println("Using slot: " + slot.getSlotNumber());
 
+            // Create booking
             String bookingNumber = "BK" + System.currentTimeMillis();
             Booking booking = new Booking(vehicle, slot, bookingNumber);
             
+            // Parse start and end times
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
             if (startTimeStr != null && !startTimeStr.isEmpty()) {
                 try {
@@ -151,28 +154,32 @@ public class ParkingService {
                 }
             }
             
+            // Calculate total amount if start/end times are provided
             if (booking.getStartTime() != null && booking.getEndTime() != null) {
                 Double calculatedAmount = booking.calculateTotalAmount();
                 booking.setTotalAmount(calculatedAmount);
                 System.out.println("Calculated amount: " + calculatedAmount);
             }
             
+            // Save booking first
             booking = bookingRepository.save(booking);
             System.out.println("Booking created: " + bookingNumber);
 
+            // Then update slot
             slot.occupy();
             slot.setCurrentBooking(booking);
             slot = slotRepository.save(slot);
-            slotRepository.flush();
+            slotRepository.flush(); // Force immediate database sync
 
             System.out.println("Slot occupied successfully");
 
+            // Build response
             response.put("success", true);
             response.put("message", "Vehicle parked successfully!");
             response.put("bookingNumber", bookingNumber);
             response.put("slotNumber", slot.getSlotNumber());
             
-            // ✅ ADD: Include location information in response
+            // Include location information
             if (slot.getLatitude() != null && slot.getLongitude() != null) {
                 Map<String, Object> location = new HashMap<>();
                 location.put("latitude", slot.getLatitude());
@@ -192,12 +199,17 @@ public class ParkingService {
             System.err.println("=== ERROR IN PARKING SERVICE ===");
             e.printStackTrace();
             response.put("success", false);
-            response.put("message", "Error: " + e.getMessage());
+            response.put("message", "Booking failed: " + e.getMessage());
+            // Rethrow to trigger transaction rollback
+            throw new RuntimeException("Transaction rolled back due to error", e);
         }
 
         return response;
     }
 
+    /**
+     * Remove vehicle and complete booking
+     */
     @Transactional
     public Map<String, Object> removeVehicle(String licensePlate) {
         Map<String, Object> response = new HashMap<>();
@@ -224,9 +236,11 @@ public class ParkingService {
                 return response;
             }
 
+            // Complete booking
             activeBooking.completeBooking();
             bookingRepository.save(activeBooking);
 
+            // Vacate slot
             ParkingSlot slot = activeBooking.getParkingSlot();
             slot.vacate();
             slotRepository.save(slot);
@@ -249,6 +263,9 @@ public class ParkingService {
         return response;
     }
 
+    /**
+     * Checkout booking by ID
+     */
     @Transactional
     public Map<String, Object> checkoutBooking(Long bookingId) {
         Map<String, Object> response = new HashMap<>();
@@ -270,9 +287,11 @@ public class ParkingService {
                 return response;
             }
 
+            // Complete booking
             booking.completeBooking();
             bookingRepository.save(booking);
 
+            // Vacate slot
             ParkingSlot slot = booking.getParkingSlot();
             slot.vacate();
             slotRepository.save(slot);
@@ -292,6 +311,9 @@ public class ParkingService {
         return response;
     }
 
+    /**
+     * Search for vehicle by license plate
+     */
     public Map<String, Object> searchVehicle(String licensePlate) {
         Map<String, Object> response = new HashMap<>();
 
@@ -328,18 +350,30 @@ public class ParkingService {
         return response;
     }
 
+    /**
+     * Get all parking slots
+     */
     public List<ParkingSlot> getAllSlots() {
         return slotRepository.findAll();
     }
 
+    /**
+     * Get count of available slots
+     */
     public long getAvailableSlots() {
         return slotRepository.countByIsOccupied(false);
     }
 
+    /**
+     * Get count of occupied slots
+     */
     public long getOccupiedSlots() {
         return slotRepository.countByIsOccupied(true);
     }
 
+    /**
+     * Generate system report
+     */
     public Map<String, Object> generateReport() {
         Map<String, Object> report = new HashMap<>();
         report.put("totalSlots", TOTAL_SLOTS);
@@ -361,6 +395,9 @@ public class ParkingService {
         return report;
     }
 
+    /**
+     * Get all bookings for a user
+     */
     public Map<String, Object> getUserBookings(Long userId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -382,7 +419,9 @@ public class ParkingService {
         return response;
     }
 
-    // ✅ NEW: Find nearby parking slots
+    /**
+     * Find nearby parking slots based on GPS coordinates
+     */
     public Map<String, Object> findNearbySlots(Double userLat, Double userLon, Double radiusKm) {
         Map<String, Object> response = new HashMap<>();
         
@@ -406,7 +445,7 @@ public class ParkingService {
                 }
             }
             
-            // Sort by distance
+            // Sort by distance (nearest first)
             nearbySlots.sort((a, b) -> 
                 Double.compare((Double) a.get("distance"), (Double) b.get("distance"))
             );
@@ -425,9 +464,12 @@ public class ParkingService {
         return response;
     }
     
-    // ✅ NEW: Calculate distance between two GPS coordinates (Haversine formula)
+    /**
+     * Calculate distance between two GPS coordinates using Haversine formula
+     * @return distance in kilometers
+     */
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Earth's radius in km
+        final int R = 6371; // Earth's radius in kilometers
         
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);

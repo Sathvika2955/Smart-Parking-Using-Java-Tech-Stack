@@ -62,7 +62,7 @@ public class ParkingSlot {
     @Column(name = "address")
     private String address;
     
-    // ✅ NEW: City and Region for multi-city support
+    // City and Region for multi-city support
     @Column(name = "city")
     private String city;
     
@@ -157,7 +157,7 @@ private String country;
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
 
 
-    // ✅ NEW: Maintenance Getters/Setters
+    //  Maintenance Getters/Setters
     public Boolean getIsUnderMaintenance() { return isUnderMaintenance; }
     public void setIsUnderMaintenance(Boolean isUnderMaintenance) { 
         this.isUnderMaintenance = isUnderMaintenance; 
@@ -191,7 +191,7 @@ private String country;
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     
-    // ✅ NEW: City and Region Getters/Setters
+    //City and Region Getters/Setters
     public String getCity() { return city; }
     public void setCity(String city) { this.city = city; }
     

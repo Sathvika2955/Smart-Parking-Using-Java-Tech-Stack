@@ -262,7 +262,7 @@ newSlot.setIsOccupied(false);
 
         return response;
     }
-    // ✅ NEW: Toggle maintenance mode
+    //Toggle maintenance mode
 @Transactional
 public Map<String, Object> toggleMaintenance(Long id, Map<String, String> data) {
     Map<String, Object> response = new HashMap<>();
